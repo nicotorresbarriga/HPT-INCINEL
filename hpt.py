@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import io
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -17,6 +18,19 @@ st.set_page_config(
     page_icon="🔱",
     layout="centered",
     initial_sidebar_state="collapsed"
+)
+
+# INYECCIÓN DE CSS: Fondo azul oscuro degradado
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #0a192f 0%, #112240 50%, #0a192f 100%);
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 # 2. Simulación de Base de Datos (Posteriormente se reemplazará por pd.read_excel('base_datos.xlsx'))
@@ -144,7 +158,10 @@ if st.button("GENERAR Y ENVIAR HPT", type="primary", use_container_width=True):
                 pdf = FPDF()
                 pdf.add_page()
                 
-                # Encabezado
+                # Encabezado (Logo agregado de forma condicional)
+                if os.path.exists("logo.png"):
+                    pdf.image("logo.png", x=10, y=8, w=30)
+                
                 pdf.set_font("Arial", "B", 14)
                 pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", ln=True, align="C")
                 pdf.ln(5)
@@ -229,6 +246,15 @@ if st.button("GENERAR Y ENVIAR HPT", type="primary", use_container_width=True):
 
                 st.success(f"HPT generada exitosamente. Documento PDF enviado a {correo_destino}.")
                 st.balloons()
+                
+                # 3. Botón para descargar el PDF generado directamente desde la web
+                with open(archivo_pdf, "rb") as pdf_file:
+                    st.download_button(
+                        label="📥 Descargar copia del PDF",
+                        data=pdf_file,
+                        file_name=archivo_pdf,
+                        mime="application/pdf"
+                    )
                 
             except Exception as e:
                 st.error(f"Error técnico durante el envío: {e}")
