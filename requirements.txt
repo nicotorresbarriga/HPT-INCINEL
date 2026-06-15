@@ -1,2 +1,5 @@
 streamlit
 pandas
+fpdf2
+streamlit-drawable-canvas
+Pillow
