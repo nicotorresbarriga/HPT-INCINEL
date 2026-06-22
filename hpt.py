@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import io
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -12,250 +11,343 @@ from fpdf import FPDF
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
-# 1. Configuración inicial de la página
+# 1. Configuración de página
 st.set_page_config(
-    page_title="HPT Operaciones ROV - TechTrident",
+    page_title="Plataforma TechTrident",
     page_icon="🔱",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# INYECCIÓN DE CSS: Fondo azul oscuro degradado
+# 2. Inyección CSS (Diseño claro y moderno)
 st.markdown(
     """
     <style>
     .stApp {
-        background: linear-gradient(135deg, #0a192f 0%, #112240 50%, #0a192f 100%);
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+        color: #1a202c;
+    }
+    h1, h2, h3 {
+        color: #2d3748;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .stButton>button {
+        background-color: #3182ce;
         color: white;
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #2b6cb0;
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+    .stTextInput>div>div>input, .stSelectbox>div>div>select {
+        border-radius: 6px;
+        border: 1px solid #cbd5e0;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 2. Simulación de Base de Datos (Posteriormente se reemplazará por pd.read_excel('base_datos.xlsx'))
-datos_empresa = {
-    "areas": ["Área Norte", "Área Centro", "Área Sur"],
-    "centros": ["Centro Puelche", "Centro Chivato 1", "Centro Elena Norte", "Centro Dring"],
-    "pilotos": ["Piloto 1", "Piloto 2", "Piloto 3", "Piloto 4"],
-    "tareas": [
-        "Inspección de redes peceras",
-        "Inspección de redes loberas",
-        "Extracción de mortalidad",
-        "Revisión de fondeos",
-        "Recuperación de objetos"
-    ]
-}
+# 3. Inicialización del Administrador de Estados (Session State)
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'login'
+if 'hpt_step' not in st.session_state:
+    st.session_state.hpt_step = 1
+if 'hpt_data' not in st.session_state:
+    st.session_state.hpt_data = {}
 
-# 3. Encabezado de la Aplicación
-st.title("Registro HPT - Operaciones ROV")
-st.markdown("### TechTrident Soluciones Digitales")
-st.divider()
+# Funciones de Navegación
+def set_page(page_name):
+    st.session_state.current_page = page_name
 
-# 4. Sección: Datos Generales (Uso de st.expander para comprimir la interfaz)
-with st.expander("1. DATOS GENERALES", expanded=True):
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fecha_hpt = st.date_input("Fecha de Ejecución", datetime.date.today())
-        area_sel = st.selectbox("Área Operativa", ["Seleccione..."] + datos_empresa["areas"])
-        piloto_sel = st.selectbox("Piloto a Cargo", ["Seleccione..."] + datos_empresa["pilotos"])
-        
+def set_step(step_number):
+    st.session_state.hpt_step = step_number
+
+# ---------------------------------------------------------
+# MÓDULO 1: SISTEMA DE AUTENTICACIÓN (LOGIN)
+# ---------------------------------------------------------
+if not st.session_state.logged_in:
+    col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        hora_hpt = st.time_input("Hora de Inicio", datetime.datetime.now().time())
-        centro_sel = st.selectbox("Centro de Cultivo", ["Seleccione..."] + datos_empresa["centros"])
-        tarea_sel = st.selectbox("Tarea a Realizar", ["Seleccione..."] + datos_empresa["tareas"])
-
-# 5. Sección: CheckList EPP Obligatorio
-with st.expander("2. ELEMENTOS DE PROTECCIÓN PERSONAL (EPP)"):
-    st.write("Verificación de elementos obligatorios para tránsito en pontón:")
-    epp_col1, epp_col2 = st.columns(2)
-    
-    with epp_col1:
-        epp_casco = st.checkbox("Casco de seguridad")
-        epp_chaleco = st.checkbox("Chaleco salvavidas")
-        epp_calzado = st.checkbox("Calzado de seguridad")
+        if os.path.exists("logo.png"):
+            st.image("logo.png", use_container_width=True)
+        st.markdown("<h2 style='text-align: center;'>Portal Operativo</h2>", unsafe_allow_html=True)
         
-    with epp_col2:
-        epp_guantes = st.checkbox("Guantes anticorte/cabritilla")
-        epp_lentes = st.checkbox("Lentes de seguridad (UV)")
-        epp_traje = st.checkbox("Traje de agua / Ropa térmica")
+        with st.form("login_form"):
+            user = st.text_input("Usuario")
+            password = st.text_input("Contraseña", type="password")
+            submitted = st.form_submit_button("INGRESAR", use_container_width=True)
+            
+            if submitted:
+                # Simulación de validación (A reemplazar con lectura de BD)
+                if user != "" and password != "":
+                    st.session_state.logged_in = True
+                    st.session_state.current_page = 'main_menu'
+                    st.rerun()
+                else:
+                    st.error("Credenciales inválidas. Intente nuevamente.")
 
-# 6. Sección: Matriz de Riesgos y Entorno
-with st.expander("3. MATRIZ DE RIESGOS PREVIO A INMERSIÓN"):
-    st.markdown("**Evaluación del Entorno**")
-    clima_ok = st.radio("¿Condiciones climáticas y de corriente permiten la operación segura del ROV?", ("Sí", "No", "N/A"), horizontal=True)
-    barandas_ok = st.radio("¿Pasarelas y barandas libres de obstáculos y en buen estado?", ("Sí", "No", "N/A"), horizontal=True)
+# ---------------------------------------------------------
+# MÓDULO 2: MENÚ PRINCIPAL
+# ---------------------------------------------------------
+elif st.session_state.current_page == 'main_menu':
+    st.title("Sistema de Gestión Operativa")
+    st.divider()
     
-    st.markdown("**Evaluación de Equipos**")
-    electrico_ok = st.radio("¿Generador, controlador y umbilical sin daños visibles y aislados de humedad?", ("Sí", "No", "N/A"), horizontal=True)
-    winche_ok = st.radio("¿Winche asegurado y libre de riesgo de atrapamiento?", ("Sí", "No", "N/A"), horizontal=True)
-    
-    st.markdown("**Coordinación**")
-    coordinacion_ok = st.radio("¿Maniobra coordinada con alimentadores/embarcaciones para evitar enredos?", ("Sí", "No", "N/A"), horizontal=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("📝 HPT", use_container_width=True):
+            set_page('hpt_menu')
+            st.rerun()
+    with col2:
+        if st.button("📊 REPORTE DIARIO", use_container_width=True):
+            st.info("Módulo en desarrollo.")
+    with col3:
+        if st.button("🔒 Cerrar Sesión", use_container_width=True):
+            st.session_state.logged_in = False
+            set_page('login')
+            st.rerun()
 
-# 7. NUEVA SECCIÓN: Evidencia y Firmas
-with st.expander("4. EVIDENCIA Y FIRMAS", expanded=True):
-    st.markdown("**Evidencia Fotográfica**")
-    foto_entorno = st.file_uploader("Adjuntar foto del entorno/clima", type=['jpg', 'png', 'jpeg'])
-
-    st.markdown("**Firmas de Responsabilidad**")
-    col_firma1, col_firma2 = st.columns(2)
+# ---------------------------------------------------------
+# MÓDULO 3: SUBMENÚ HPT
+# ---------------------------------------------------------
+elif st.session_state.current_page == 'hpt_menu':
+    st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
+    st.title("Módulo HPT")
+    st.divider()
     
-    with col_firma1:
-        st.write("Firma Piloto a Cargo")
-        firma_piloto = st_canvas(
-            stroke_width=2,
-            stroke_color="#000000",
-            background_color="#EEEEEE",
-            height=150,
-            width=300,
-            drawing_mode="freedraw",
-            key="canvas_piloto"
-        )
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("➕ NUEVO", use_container_width=True):
+            set_step(1)
+            set_page('hpt_nuevo')
+            st.rerun()
+    with col2:
+        st.button("🔍 BÚSQUEDA", use_container_width=True)
+    with col3:
+        st.button("⬇️ EXPORTAR", use_container_width=True)
+
+# ---------------------------------------------------------
+# MÓDULO 4: FLUJO DE CREACIÓN HPT (WIZARD)
+# ---------------------------------------------------------
+elif st.session_state.current_page == 'hpt_nuevo':
+    st.button("⬅️ Cancelar y Volver", on_click=set_page, args=('hpt_menu',))
+    st.title("Nueva HPT - Paso " + str(st.session_state.hpt_step))
+    st.progress(st.session_state.hpt_step / 4.0)
+    
+    # --- PASO 1: DATOS GENERALES ---
+    if st.session_state.hpt_step == 1:
+        st.subheader("Datos Operativos")
+        with st.form("form_paso1"):
+            empresa = st.selectbox("Empresa", ["Salmones Blumar", "Salmones Blumar Magallanes"])
+            col1, col2 = st.columns(2)
+            with col1:
+                fecha = st.date_input("Fecha", datetime.date.today())
+                hora_inicio = st.time_input("Hora de Inicio")
+                encargado = st.text_input("Encargado del Centro")
+                apr1 = st.text_input("Asesor Prevención Riesgos 1")
+            with col2:
+                centro = st.text_input("Centro de Cultivo")
+                hora_termino = st.time_input("Hora de Término")
+                correo = st.text_input("Correo del Centro")
+                apr2 = st.text_input("Asesor Prevención Riesgos 2")
+                
+            tarea = st.text_area("Tarea a Realizar")
+            
+            submit1 = st.form_submit_button("SIGUIENTE ➡️", use_container_width=True)
+            if submit1:
+                st.session_state.hpt_data.update({
+                    "empresa": empresa, "fecha": str(fecha), "hora_inicio": str(hora_inicio),
+                    "hora_termino": str(hora_termino), "centro": centro, "correo": correo,
+                    "encargado": encargado, "apr1": apr1, "apr2": apr2, "tarea": tarea
+                })
+                set_step(2)
+                st.rerun()
+
+    # --- PASO 2: EPP CHECKLIST ---
+    elif st.session_state.hpt_step == 2:
+        st.subheader("Checklist EPP")
+        with st.form("form_paso2"):
+            col1, col2 = st.columns(2)
+            with col1:
+                epp_guantes = st.checkbox("Guantes")
+                epp_chaleco = st.checkbox("Chaleco Salvavidas")
+                epp_zapatos = st.checkbox("Zapatos de seguridad / Botas")
+                epp_termica = st.checkbox("Ropa Térmica")
+            with col2:
+                epp_traje = st.checkbox("Traje de Agua")
+                epp_comunicacion = st.checkbox("Medios de Comunicación")
+                epp_botiquin = st.checkbox("Botiquín")
+                
+            submit2 = st.form_submit_button("SIGUIENTE ➡️", use_container_width=True)
+            if submit2:
+                st.session_state.hpt_data.update({
+                    "epp": [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]
+                })
+                set_step(3)
+                st.rerun()
+
+    # --- PASO 3: ERC CHECKLIST ---
+    elif st.session_state.hpt_step == 3:
+        st.subheader("Checklist ERC")
+        with st.form("form_paso3"):
+            col1, col2 = st.columns(2)
+            with col1:
+                erc_izaje = st.checkbox("Izaje")
+                erc_buceo = st.checkbox("Buceo")
+                erc_electricos = st.checkbox("Intervención Equipos Eléctricos")
+            with col2:
+                erc_caidas = st.checkbox("Caídas al mismo/distinto nivel")
+                erc_navegacion = st.checkbox("Navegación Diurna/Nocturna")
+                erc_atrapamiento = st.checkbox("Atrapamiento")
+                
+            submit3 = st.form_submit_button("SIGUIENTE ➡️", use_container_width=True)
+            if submit3:
+                st.session_state.hpt_data.update({
+                    "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]
+                })
+                set_step(4)
+                st.rerun()
+
+    # --- PASO 4: TOMA DE CONOCIMIENTO Y FIRMAS ---
+    elif st.session_state.hpt_step == 4:
+        st.subheader("Validación Final")
         
-    with col_firma2:
-        st.write("Firma Encargado de Centro")
-        firma_encargado = st_canvas(
-            stroke_width=2,
-            stroke_color="#000000",
-            background_color="#EEEEEE",
-            height=150,
-            width=300,
-            drawing_mode="freedraw",
-            key="canvas_encargado"
-        )
-        
-    correo_destino = st.text_input("Correos de destino (Si son varios, separe por coma)")
+        with st.expander("Toma de Conocimiento", expanded=True):
+            tc_nombre = st.text_input("Nombre Difusión")
+            col1, col2 = st.columns(2)
+            with col1:
+                tc_fecha = st.date_input("Fecha Difusión")
+                tc_relator = st.text_input("Nombre Relator")
+            with col2:
+                tc_hora = st.time_input("Hora Difusión")
+                tc_duracion = st.text_input("Duración Difusión")
+                tc_cargo = st.text_input("Cargo Relator")
+            
+            st.write("Firma Relator (o Piloto)")
+            firma_relator = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_relator")
 
-# 8. Lógica de Validación y Envío
-st.divider()
+        with st.expander("Firmas", expanded=True):
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                sup_servicio = st.text_input("Nombre Supervisor del Servicio (Piloto)")
+                st.write("Firma Supervisor Servicio")
+                firma_sup_serv = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_serv")
+            with col_f2:
+                empresa_sel = st.session_state.hpt_data.get('empresa', 'Salmonera')
+                sup_salmonera = st.text_input(f"Nombre Supervisor {empresa_sel}")
+                st.write(f"Firma Supervisor {empresa_sel}")
+                firma_sup_sal = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_sal")
 
-# Botón principal de ejecución
-if st.button("GENERAR Y ENVIAR HPT", type="primary", use_container_width=True):
-    # Validación estricta de campos críticos
-    campos_vacios = []
-    if area_sel == "Seleccione...": campos_vacios.append("Área Operativa")
-    if centro_sel == "Seleccione...": campos_vacios.append("Centro de Cultivo")
-    if piloto_sel == "Seleccione...": campos_vacios.append("Piloto a Cargo")
-    if tarea_sel == "Seleccione...": campos_vacios.append("Tarea a Realizar")
-    
-    # Validación de EPP mínimo
-    epp_completos = all([epp_casco, epp_chaleco, epp_calzado, epp_guantes, epp_lentes])
-    
-    if campos_vacios:
-        st.error(f"Falta completar los siguientes datos generales: {', '.join(campos_vacios)}")
-    elif not epp_completos:
-        st.error("Debe confirmar el uso de todos los EPP obligatorios (Casco, Chaleco, Calzado, Guantes, Lentes).")
-    elif clima_ok == "No" or electrico_ok == "No":
-        st.error("No se puede iniciar la maniobra: Condiciones climáticas adversas o riesgo eléctrico detectado.")
-    elif not correo_destino:
-        st.error("Debe ingresar al menos un correo electrónico de destino.")
-    else:
-        with st.spinner("Compilando documento y enviando al servidor de correo..."):
-            try:
-                # 1. Crear el PDF
-                pdf = FPDF()
-                pdf.add_page()
-                
-                # Encabezado (Logo agregado de forma condicional)
-                if os.path.exists("logo.png"):
-                    pdf.image("logo.png", x=10, y=8, w=30)
-                
-                pdf.set_font("Arial", "B", 14)
-                pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", ln=True, align="C")
-                pdf.ln(5)
-                
-                # Datos Generales
-                pdf.set_font("Arial", "", 10)
-                pdf.cell(0, 8, f"Fecha: {fecha_hpt} | Hora: {hora_hpt}", ln=True)
-                pdf.cell(0, 8, f"Area: {area_sel} | Centro: {centro_sel}", ln=True)
-                pdf.cell(0, 8, f"Piloto: {piloto_sel} | Tarea: {tarea_sel}", ln=True)
-                pdf.line(10, 45, 200, 45)
-                pdf.ln(5)
-                
-                # Matriz
-                pdf.cell(0, 8, f"Condiciones climaticas seguras: {clima_ok}", ln=True)
-                pdf.cell(0, 8, f"Equipos sin daños electricos: {electrico_ok}", ln=True)
-                pdf.cell(0, 8, f"Pasarelas en buen estado: {barandas_ok}", ln=True)
-                pdf.cell(0, 8, f"Coordinacion con embarcaciones: {coordinacion_ok}", ln=True)
-                pdf.ln(5)
-                
-                # Procesar Foto
-                if foto_entorno is not None:
-                    foto_img = Image.open(foto_entorno)
-                    # Convertir a RGB por si la imagen tiene canal Alfa (transparencia) o distinto formato
-                    foto_img = foto_img.convert("RGB")
-                    foto_img.save("foto_temp.jpg")
-                    pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 10, "Evidencia del Entorno:", ln=True)
-                    pdf.image("foto_temp.jpg", x=10, w=80)
+        if st.button("GENERAR Y ENVIAR HPT", type="primary", use_container_width=True):
+            data = st.session_state.hpt_data
+            
+            with st.spinner("Compilando arquitectura PDF y transmitiendo..."):
+                try:
+                    pdf = FPDF()
+                    pdf.add_page()
+                    
+                    if os.path.exists("logo.png"):
+                        pdf.image("logo.png", x=10, y=8, w=30)
+                    
+                    pdf.set_font("Arial", "B", 14)
+                    pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", ln=True, align="C")
                     pdf.ln(5)
                     
-                # Procesar Firmas
-                def procesar_firma(canvas_obj, filename):
-                    if canvas_obj.image_data is not None:
-                        img_data = canvas_obj.image_data
-                        firma_img = Image.fromarray((img_data).astype('uint8'), mode='RGBA')
-                        # Generar fondo blanco para FPDF
-                        fondo_blanco = Image.new("RGB", firma_img.size, (255, 255, 255))
-                        fondo_blanco.paste(firma_img, mask=firma_img.split()[3])
-                        fondo_blanco.save(filename)
-                        return True
-                    return False
-
-                # Posicionar firmas en la parte baja de la hoja
-                pdf.set_y(-60) 
-                
-                if procesar_firma(firma_piloto, "firma_piloto.jpg"):
-                    pdf.image("firma_piloto.jpg", x=20, w=50)
-                if procesar_firma(firma_encargado, "firma_encargado.jpg"):
-                    pdf.image("firma_encargado.jpg", x=120, w=50)
+                    pdf.set_font("Arial", "", 9)
+                    pdf.cell(0, 6, f"Empresa: {data.get('empresa')} | Centro: {data.get('centro')}", ln=True)
+                    pdf.cell(0, 6, f"Fecha: {data.get('fecha')} | Inicio: {data.get('hora_inicio')} | Termino: {data.get('hora_termino')}", ln=True)
+                    pdf.cell(0, 6, f"Encargado: {data.get('encargado')} | Correo: {data.get('correo')}", ln=True)
+                    pdf.cell(0, 6, f"APR1: {data.get('apr1')} | APR2: {data.get('apr2')}", ln=True)
+                    pdf.multi_cell(0, 6, f"Tarea: {data.get('tarea')}")
+                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                    pdf.ln(3)
                     
-                pdf.set_y(-25)
-                pdf.set_font("Arial", "B", 10)
-                pdf.cell(80, 10, "Firma Piloto", align="C")
-                pdf.cell(100, 10, "Firma Encargado", align="C")
+                    pdf.set_font("Arial", "B", 9)
+                    pdf.cell(0, 6, "EPP:", ln=True)
+                    pdf.set_font("Arial", "", 8)
+                    epp_labels = ["Guantes", "Chaleco", "Zapatos/Botas", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
+                    epp_vals = [f"[{'X' if v else ' '}] {l}" for v, l in zip(data.get('epp', []), epp_labels)]
+                    pdf.multi_cell(0, 5, " | ".join(epp_vals))
+                    
+                    pdf.set_font("Arial", "B", 9)
+                    pdf.cell(0, 6, "ERC:", ln=True)
+                    pdf.set_font("Arial", "", 8)
+                    erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Nav. Diurna/Nocturna", "Atrapamiento"]
+                    erc_vals = [f"[{'X' if v else ' '}] {l}" for v, l in zip(data.get('erc', []), erc_labels)]
+                    pdf.multi_cell(0, 5, " | ".join(erc_vals))
+                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                    pdf.ln(3)
+                    
+                    pdf.set_font("Arial", "B", 9)
+                    pdf.cell(0, 6, "Toma de Conocimiento:", ln=True)
+                    pdf.set_font("Arial", "", 8)
+                    pdf.cell(0, 5, f"Difusion: {tc_nombre} | Fecha: {tc_fecha} | Hora: {tc_hora} | Duracion: {tc_duracion}", ln=True)
+                    pdf.cell(0, 5, f"Relator: {tc_relator} | Cargo: {tc_cargo}", ln=True)
+                    
+                    # Función de procesamiento de lienzo a JPG
+                    def procesar_firma(canvas_obj, filename):
+                        if canvas_obj.image_data is not None:
+                            img_data = canvas_obj.image_data
+                            firma_img = Image.fromarray((img_data).astype('uint8'), mode='RGBA')
+                            fondo_blanco = Image.new("RGB", firma_img.size, (255, 255, 255))
+                            fondo_blanco.paste(firma_img, mask=firma_img.split()[3])
+                            fondo_blanco.save(filename)
+                            return True
+                        return False
 
-                # Guardar PDF temporalmente
-                archivo_pdf = f"HPT_{centro_sel.replace(' ', '_')}_{fecha_hpt}.pdf"
-                pdf.output(archivo_pdf)
+                    y_firmas = pdf.get_y() + 5
+                    
+                    if procesar_firma(firma_relator, "f_relator.jpg"):
+                        pdf.image("f_relator.jpg", x=10, y=y_firmas, w=40)
+                    if procesar_firma(firma_sup_serv, "f_serv.jpg"):
+                        pdf.image("f_serv.jpg", x=70, y=y_firmas, w=40)
+                    if procesar_firma(firma_sup_sal, "f_sal.jpg"):
+                        pdf.image("f_sal.jpg", x=130, y=y_firmas, w=40)
+                        
+                    pdf.set_y(y_firmas + 30)
+                    pdf.set_font("Arial", "B", 8)
+                    pdf.cell(60, 5, "Firma Relator", align="C")
+                    pdf.cell(60, 5, "Firma Sup. Servicio", align="C")
+                    pdf.cell(60, 5, f"Firma {data.get('empresa')}", align="C")
 
-                # 2. Enviar el Correo Electrónico
-                remitente = st.secrets["EMAIL_USER"]
-                password = st.secrets["EMAIL_PASS"]
-                
-                msg = MIMEMultipart()
-                msg['From'] = remitente
-                msg['To'] = correo_destino
-                msg['Subject'] = f"Reporte HPT ROV - {centro_sel} - {fecha_hpt}"
-                msg.attach(MIMEText("Se adjunta el reporte de Prevención de Riesgos (HPT) previo a inmersión ROV generado desde la plataforma TechTrident.", 'plain'))
+                    archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}.pdf"
+                    pdf.output(archivo_pdf)
 
-                with open(archivo_pdf, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(attachment.read())
-                encoders.encode_base64(part)
-                part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf}")
-                msg.attach(part)
+                    # Rutina SMTP
+                    remitente = st.secrets["EMAIL_USER"]
+                    password = st.secrets["EMAIL_PASS"]
+                    destinatario = data.get('correo', remitente)
+                    
+                    msg = MIMEMultipart()
+                    msg['From'] = remitente
+                    msg['To'] = destinatario
+                    msg['Subject'] = f"Reporte HPT - {data.get('centro')} - {data.get('fecha')}"
+                    msg.attach(MIMEText("Se adjunta el reporte HPT operacional.", 'plain'))
 
-                server = smtplib.SMTP('smtp.gmail.com', 587)
-                server.starttls()
-                server.login(remitente, password)
-                server.send_message(msg)
-                server.quit()
+                    with open(archivo_pdf, "rb") as attachment:
+                        part = MIMEBase("application", "octet-stream")
+                        part.set_payload(attachment.read())
+                    encoders.encode_base64(part)
+                    part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf}")
+                    msg.attach(part)
 
-                st.success(f"HPT generada exitosamente. Documento PDF enviado a {correo_destino}.")
-                st.balloons()
-                
-                # 3. Botón para descargar el PDF generado directamente desde la web
-                with open(archivo_pdf, "rb") as pdf_file:
-                    st.download_button(
-                        label="📥 Descargar copia del PDF",
-                        data=pdf_file,
-                        file_name=archivo_pdf,
-                        mime="application/pdf"
-                    )
-                
-            except Exception as e:
-                st.error(f"Error técnico durante el envío: {e}")
-                st.info("Recuerde configurar los 'Secrets' en Streamlit con su EMAIL_USER y EMAIL_PASS.")
+                    server = smtplib.SMTP('smtp.gmail.com', 587)
+                    server.starttls()
+                    server.login(remitente, password)
+                    server.send_message(msg)
+                    server.quit()
+
+                    st.success("HPT Compilada y Transmitida con éxito.")
+                    
+                    with open(archivo_pdf, "rb") as pdf_file:
+                        st.download_button(label="📥 Descargar PDF", data=pdf_file, file_name=archivo_pdf, mime="application/pdf")
+                        
+                except Exception as e:
+                    st.error(f"Falla de ejecución técnica: {e}")
