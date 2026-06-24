@@ -10,9 +10,7 @@ from email import encoders
 from fpdf import FPDF
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
-
-# [OPCIONAL] Preparación para Supabase
-# from supabase import create_client, Client
+from supabase import create_client, Client
 
 # 1. Configuración de página
 st.set_page_config(
@@ -55,24 +53,38 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 3. Base de Datos Provisoria (Local)
-USUARIOS = {
-    "Ntorres": "17909926",
-    "Imuñoz": "12345678",
-    "Pasencio": "98765432"
-}
+# 3. Conexión a Supabase y Carga de Datos
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-CENTROS_AREAS = {
-    "Centro Ninualac": "Area Sur",
-    "Centro Dring 3": "Area Sur",
-    "Centro Punta cola": "Area Sur",
-    "Centro Midhurst": "Area Norte",
-    "Centro Bobe": "Area Norte",
-    "Centro Ceres": "Area Norte",
-    "Centro Cordoba 1": "Area Austral",
-    "Centro Cordoba 2": "Area Austral",
-    "Centro Perez de Arce": "Area Austral"
-}
+USUARIOS = {}
+CENTROS_AREAS = {}
+
+try:
+    supabase = init_connection()
+    # Consulta a tabla usuarios
+    res_usuarios = supabase.table('usuarios').select('*').execute()
+    USUARIOS = {row['usuario']: row['contrasena'] for row in res_usuarios.data}
+    
+    # Consulta a tabla centros
+    res_centros = supabase.table('centros').select('*').execute()
+    CENTROS_AREAS = {row['nombre']: row['area'] for row in res_centros.data}
+except Exception as e:
+    # Sistema de contingencia local en caso de fallo de conexión o tablas inexistentes
+    USUARIOS = {
+        "Ntorres": "17909926",
+        "Imuñoz": "12345678",
+        "Pasencio": "98765432"
+    }
+    CENTROS_AREAS = {
+        "Centro Ninualac": "Area Sur", "Centro Dring 3": "Area Sur", "Centro Punta cola": "Area Sur",
+        "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
+        "Centro Cordoba 1": "Area Austral", "Centro Cordoba 2": "Area Austral", "Centro Perez de Arce": "Area Austral"
+    }
+    st.sidebar.warning("Advertencia: Operando con base de datos de contingencia (Local).")
 
 # 4. Inicialización del Administrador de Estados (Session State)
 if 'logged_in' not in st.session_state:
@@ -86,7 +98,7 @@ if 'hpt_step' not in st.session_state:
 if 'hpt_data' not in st.session_state:
     st.session_state.hpt_data = {
         "empresa": "Salmones Blumar", "fecha": datetime.date.today(), "hora_inicio": datetime.datetime.now().time(),
-        "hora_termino": datetime.datetime.now().time(), "centro": list(CENTROS_AREAS.keys())[0],
+        "hora_termino": datetime.datetime.now().time(), "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
         "correo": "", "encargado": "", "apr1": "", "apr2": "", "tarea": "",
         "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6
     }
@@ -114,8 +126,8 @@ if not st.session_state.logged_in:
             submitted = st.form_submit_button("INGRESAR", use_container_width=True)
             
             if submitted:
-                # Validación contra base de datos provisoria
-                if user in USUARIOS and USUARIOS[user] == password:
+                # Validación contra la base de datos (Supabase o Local)
+                if user in USUARIOS and str(USUARIOS[user]) == str(password):
                     st.session_state.logged_in = True
                     st.session_state.current_user = user
                     st.session_state.current_page = 'main_menu'
@@ -193,7 +205,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
             idx_centro = opciones_centros.index(st.session_state.hpt_data["centro"]) if st.session_state.hpt_data["centro"] in opciones_centros else 0
             
             centro = st.selectbox("Centro de Cultivo", opciones_centros, index=idx_centro)
-            area_asignada = CENTROS_AREAS[centro]
+            area_asignada = CENTROS_AREAS.get(centro, "Desconocida")
             st.info(f"📍 Área Asignada: **{area_asignada}**")
             
             hora_termino = st.time_input("Hora de Término", value=st.session_state.hpt_data["hora_termino"])
@@ -230,7 +242,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back2", use_container_width=True):
-                # Guarda el estado actual antes de retroceder
                 st.session_state.hpt_data["epp"] = [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]
                 set_step(1)
                 st.rerun()
