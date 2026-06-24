@@ -11,6 +11,9 @@ from fpdf import FPDF
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
+# [OPCIONAL] Preparación para Supabase
+# from supabase import create_client, Client
+
 # 1. Configuración de página
 st.set_page_config(
     page_title="Plataforma TechTrident",
@@ -19,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Inyección CSS (Diseño claro y moderno)
+# 2. Inyección CSS
 st.markdown(
     """
     <style>
@@ -52,15 +55,41 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 3. Inicialización del Administrador de Estados (Session State)
+# 3. Base de Datos Provisoria (Local)
+USUARIOS = {
+    "Ntorres": "17909926",
+    "Imuñoz": "12345678",
+    "Pasencio": "98765432"
+}
+
+CENTROS_AREAS = {
+    "Centro Ninualac": "Area Sur",
+    "Centro Dring 3": "Area Sur",
+    "Centro Punta cola": "Area Sur",
+    "Centro Midhurst": "Area Norte",
+    "Centro Bobe": "Area Norte",
+    "Centro Ceres": "Area Norte",
+    "Centro Cordoba 1": "Area Austral",
+    "Centro Cordoba 2": "Area Austral",
+    "Centro Perez de Arce": "Area Austral"
+}
+
+# 4. Inicialización del Administrador de Estados (Session State)
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+if 'current_user' not in st.session_state:
+    st.session_state.current_user = ""
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'login'
 if 'hpt_step' not in st.session_state:
     st.session_state.hpt_step = 1
 if 'hpt_data' not in st.session_state:
-    st.session_state.hpt_data = {}
+    st.session_state.hpt_data = {
+        "empresa": "Salmones Blumar", "fecha": datetime.date.today(), "hora_inicio": datetime.datetime.now().time(),
+        "hora_termino": datetime.datetime.now().time(), "centro": list(CENTROS_AREAS.keys())[0],
+        "correo": "", "encargado": "", "apr1": "", "apr2": "", "tarea": "",
+        "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6
+    }
 
 # Funciones de Navegación
 def set_page(page_name):
@@ -85,18 +114,21 @@ if not st.session_state.logged_in:
             submitted = st.form_submit_button("INGRESAR", use_container_width=True)
             
             if submitted:
-                if user != "" and password != "":
+                # Validación contra base de datos provisoria
+                if user in USUARIOS and USUARIOS[user] == password:
                     st.session_state.logged_in = True
+                    st.session_state.current_user = user
                     st.session_state.current_page = 'main_menu'
                     st.rerun()
                 else:
-                    st.error("Credenciales inválidas. Intente nuevamente.")
+                    st.error("Credenciales inválidas o usuario no registrado.")
 
 # ---------------------------------------------------------
 # MÓDULO 2: MENÚ PRINCIPAL
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'main_menu':
     st.title("Sistema de Gestión Operativa")
+    st.write(f"Operador en turno: **{st.session_state.current_user}**")
     st.divider()
     
     col1, col2, col3 = st.columns(3)
@@ -110,6 +142,7 @@ elif st.session_state.current_page == 'main_menu':
     with col3:
         if st.button("🔒 Cerrar Sesión", use_container_width=True):
             st.session_state.logged_in = False
+            st.session_state.current_user = ""
             set_page('login')
             st.rerun()
 
@@ -143,32 +176,36 @@ elif st.session_state.current_page == 'hpt_nuevo':
     # --- PASO 1: DATOS GENERALES ---
     if st.session_state.hpt_step == 1:
         st.subheader("Datos Operativos")
-        empresa = st.selectbox("Empresa", ["Salmones Blumar", "Salmones Blumar Magallanes"])
+        
+        opciones_empresa = ["Salmones Blumar", "Salmones Blumar Magallanes"]
+        idx_empresa = opciones_empresa.index(st.session_state.hpt_data["empresa"]) if st.session_state.hpt_data["empresa"] in opciones_empresa else 0
+        empresa = st.selectbox("Empresa", opciones_empresa, index=idx_empresa)
         
         col1, col2 = st.columns(2)
         with col1:
-            fecha = st.date_input("Fecha", datetime.date.today())
-            hora_inicio = st.time_input("Hora de Inicio")
-            encargado = st.text_input("Encargado del Centro")
-            apr1 = st.text_input("Asesor Prevención Riesgos 1")
+            fecha = st.date_input("Fecha", value=st.session_state.hpt_data["fecha"])
+            hora_inicio = st.time_input("Hora de Inicio", value=st.session_state.hpt_data["hora_inicio"])
+            encargado = st.text_input("Encargado del Centro", value=st.session_state.hpt_data["encargado"])
+            apr1 = st.text_input("Asesor Prevención Riesgos 1", value=st.session_state.hpt_data["apr1"])
+        
         with col2:
-            centros_dict = {
-                "dring3": "centro.dring3@blumar.com",
-                "Elena Norte": "centro.elenanorte@blumar.com",
-                "Ninualac 2": "centro.ninualac2@blumar.com",
-                "Otro": ""
-            }
-            centro = st.selectbox("Centro de Cultivo", list(centros_dict.keys()))
-            hora_termino = st.time_input("Hora de Término")
-            correo = st.text_input("Correo del Centro", value=centros_dict.get(centro, ""))
-            apr2 = st.text_input("Asesor Prevención Riesgos 2")
+            opciones_centros = list(CENTROS_AREAS.keys())
+            idx_centro = opciones_centros.index(st.session_state.hpt_data["centro"]) if st.session_state.hpt_data["centro"] in opciones_centros else 0
             
-        tarea = st.text_area("Tarea a Realizar")
+            centro = st.selectbox("Centro de Cultivo", opciones_centros, index=idx_centro)
+            area_asignada = CENTROS_AREAS[centro]
+            st.info(f"📍 Área Asignada: **{area_asignada}**")
+            
+            hora_termino = st.time_input("Hora de Término", value=st.session_state.hpt_data["hora_termino"])
+            correo = st.text_input("Correo del Centro de Destino", value=st.session_state.hpt_data["correo"])
+            apr2 = st.text_input("Asesor Prevención Riesgos 2", value=st.session_state.hpt_data["apr2"])
+            
+        tarea = st.text_area("Tarea a Realizar", value=st.session_state.hpt_data["tarea"])
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
             st.session_state.hpt_data.update({
-                "empresa": empresa, "fecha": str(fecha), "hora_inicio": str(hora_inicio),
-                "hora_termino": str(hora_termino), "centro": centro, "correo": correo,
+                "empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio,
+                "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo,
                 "encargado": encargado, "apr1": apr1, "apr2": apr2, "tarea": tarea
             })
             set_step(2)
@@ -177,27 +214,29 @@ elif st.session_state.current_page == 'hpt_nuevo':
     # --- PASO 2: EPP CHECKLIST ---
     elif st.session_state.hpt_step == 2:
         st.subheader("Checklist EPP")
+        estado_epp = st.session_state.hpt_data["epp"]
+        
         col1, col2 = st.columns(2)
         with col1:
-            epp_guantes = st.checkbox("Guantes")
-            epp_chaleco = st.checkbox("Chaleco Salvavidas")
-            epp_zapatos = st.checkbox("Zapatos de seguridad / Botas")
-            epp_termica = st.checkbox("Ropa Térmica")
+            epp_guantes = st.checkbox("Guantes", value=estado_epp[0])
+            epp_chaleco = st.checkbox("Chaleco Salvavidas", value=estado_epp[1])
+            epp_zapatos = st.checkbox("Zapatos de seguridad / Botas", value=estado_epp[2])
+            epp_termica = st.checkbox("Ropa Térmica", value=estado_epp[3])
         with col2:
-            epp_traje = st.checkbox("Traje de Agua")
-            epp_comunicacion = st.checkbox("Medios de Comunicación")
-            epp_botiquin = st.checkbox("Botiquín")
+            epp_traje = st.checkbox("Traje de Agua", value=estado_epp[4])
+            epp_comunicacion = st.checkbox("Medios de Comunicación", value=estado_epp[5])
+            epp_botiquin = st.checkbox("Botiquín", value=estado_epp[6])
             
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back2", use_container_width=True):
+                # Guarda el estado actual antes de retroceder
+                st.session_state.hpt_data["epp"] = [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]
                 set_step(1)
                 st.rerun()
         with col_btn2:
             if st.button("SIGUIENTE ➡️", key="next2", use_container_width=True):
-                st.session_state.hpt_data.update({
-                    "epp": [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]
-                })
+                st.session_state.hpt_data["epp"] = [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]
                 set_step(3)
                 st.rerun()
 
@@ -206,30 +245,33 @@ elif st.session_state.current_page == 'hpt_nuevo':
         st.subheader("Faena a Realizar y Checklist ERC")
         
         opciones_faena = [
-            "Inspeccion Red Lobera", 
-            "Inspeccion Red pecera", 
-            "Inspeccion Tensores", 
-            "Recuperacion inorganico", 
-            "Apoyo Centro de cultivo", 
-            "Extraccion de mortalidad", 
-            "Mantencion equipos"
+            "Inspeccion Red Lobera", "Inspeccion Red pecera", "Inspeccion Tensores", 
+            "Recuperacion inorganico", "Apoyo Centro de cultivo", 
+            "Extraccion de mortalidad", "Mantencion equipos"
         ]
-        faena = st.selectbox("Faena a realizar", opciones_faena)
+        idx_faena = opciones_faena.index(st.session_state.hpt_data["faena"]) if st.session_state.hpt_data["faena"] in opciones_faena else 0
+        faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
+        
+        estado_erc = st.session_state.hpt_data["erc"]
         
         st.markdown("**Checklist ERC**")
         col1, col2 = st.columns(2)
         with col1:
-            erc_izaje = st.checkbox("Izaje")
-            erc_buceo = st.checkbox("Buceo")
-            erc_electricos = st.checkbox("Intervención Equipos Eléctricos")
+            erc_izaje = st.checkbox("Izaje", value=estado_erc[0])
+            erc_buceo = st.checkbox("Buceo", value=estado_erc[1])
+            erc_electricos = st.checkbox("Intervención Equipos Eléctricos", value=estado_erc[2])
         with col2:
-            erc_caidas = st.checkbox("Caídas al mismo/distinto nivel")
-            erc_navegacion = st.checkbox("Navegación Diurna/Nocturna")
-            erc_atrapamiento = st.checkbox("Atrapamiento")
+            erc_caidas = st.checkbox("Caídas al mismo/distinto nivel", value=estado_erc[3])
+            erc_navegacion = st.checkbox("Navegación Diurna/Nocturna", value=estado_erc[4])
+            erc_atrapamiento = st.checkbox("Atrapamiento", value=estado_erc[5])
             
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back3", use_container_width=True):
+                st.session_state.hpt_data.update({
+                    "faena": faena,
+                    "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]
+                })
                 set_step(2)
                 st.rerun()
         with col_btn2:
@@ -293,7 +335,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         pdf.ln(5)
                         
                         pdf.set_font("Arial", "", 9)
-                        pdf.cell(0, 6, f"Empresa: {data.get('empresa')} | Centro: {data.get('centro')}", ln=True)
+                        pdf.cell(0, 6, f"Empresa: {data.get('empresa')} | Centro: {data.get('centro')} | Area: {data.get('area')}", ln=True)
                         pdf.cell(0, 6, f"Fecha: {data.get('fecha')} | Inicio: {data.get('hora_inicio')} | Termino: {data.get('hora_termino')}", ln=True)
                         pdf.cell(0, 6, f"Encargado: {data.get('encargado')} | Correo: {data.get('correo')}", ln=True)
                         pdf.cell(0, 6, f"APR1: {data.get('apr1')} | APR2: {data.get('apr2')}", ln=True)
@@ -324,7 +366,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         pdf.cell(0, 5, f"Difusion: {tc_nombre} | Fecha: {tc_fecha} | Hora: {tc_hora} | Duracion: {tc_duracion}", ln=True)
                         pdf.cell(0, 5, f"Relator: {tc_relator} | Cargo: {tc_cargo}", ln=True)
                         
-                        # Función de procesamiento de lienzo a JPG
                         def procesar_firma(canvas_obj, filename):
                             if canvas_obj.image_data is not None:
                                 img_data = canvas_obj.image_data
@@ -356,7 +397,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         # Rutina SMTP
                         remitente = st.secrets["EMAIL_USER"]
                         password = st.secrets["EMAIL_PASS"]
-                        destinatario = data.get('correo', remitente)
+                        destinatario = data.get('correo') if data.get('correo') else remitente
                         
                         msg = MIMEMultipart()
                         msg['From'] = remitente
