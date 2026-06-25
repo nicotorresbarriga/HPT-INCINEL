@@ -84,6 +84,17 @@ except Exception as e:
         "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
         "Centro Cordoba 1": "Area Austral", "Centro Cordoba 2": "Area Austral", "Centro Perez de Arce": "Area Austral"
     }
+    # NUEVO: Diccionario de correos automáticos por centro
+CENTROS_CORREOS = {
+    "Centro Ninualac": "ninualac@blumar.com", 
+    "Centro Dring 3": "centro.dring@blumar.com", 
+    "Centro Punta cola": "puntacola@blumar.com",
+    "Centro Midhurst": "midhurst@blumar.com", 
+    "Centro Bobe": "bobe@blumar.com", 
+    "Centro Ceres": "ceres@blumar.com",
+    "Centro Cordoba 1": "cordoba11@blumar.com", 
+    "Centro Cordoba 2": "cordoba22@blumar.com", 
+    "Centro Perez de Arce": "perez@blumar.com"
     st.sidebar.warning("Advertencia: Operando con base de datos de contingencia (Local).")
 
 # 4. Inicialización del Administrador de Estados (Session State)
@@ -200,18 +211,25 @@ elif st.session_state.current_page == 'hpt_nuevo':
             encargado = st.text_input("Encargado del Centro", value=st.session_state.hpt_data["encargado"])
             apr1 = st.text_input("Asesor Prevención Riesgos 1", value=st.session_state.hpt_data["apr1"])
         
-        with col2:
+       with col2:
             opciones_centros = list(CENTROS_AREAS.keys())
             idx_centro = opciones_centros.index(st.session_state.hpt_data["centro"]) if st.session_state.hpt_data["centro"] in opciones_centros else 0
             
+            # El usuario elige el centro
             centro = st.selectbox("Centro de Cultivo", opciones_centros, index=idx_centro)
+            
+            # El sistema autoasigna Área y Correo
             area_asignada = CENTROS_AREAS.get(centro, "Desconocida")
+            correo_asignado = CENTROS_CORREOS.get(centro, "sin_correo@blumar.com")
+            
             st.info(f"📍 Área Asignada: **{area_asignada}**")
             
             hora_termino = st.time_input("Hora de Término", value=st.session_state.hpt_data["hora_termino"])
-            correo = st.text_input("Correo del Centro de Destino", value=st.session_state.hpt_data["correo"])
-            apr2 = st.text_input("Asesor Prevención Riesgos 2", value=st.session_state.hpt_data["apr2"])
             
+            # La casilla de correo se llena sola y se bloquea (disabled=True)
+            correo = st.text_input("Correo del Centro (Automático)", value=correo_asignado, disabled=True)
+            
+            apr2 = st.text_input("Nombre Asesor Prevención 2", value=st.session_state.hpt_data["apr2"])
         tarea = st.text_area("Tarea a Realizar", value=st.session_state.hpt_data["tarea"])
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
@@ -408,13 +426,20 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         # Rutina SMTP
                         remitente = st.secrets["EMAIL_USER"]
                         password = st.secrets["EMAIL_PASS"]
-                        destinatario = data.get('correo') if data.get('correo') else remitente
+                        
+                        # AQUÍ DEFINES LOS CORREOS FIJOS DE PREVENCIÓN DE RIESGOS
+                        correo_prevencion_1 = "prevencion1@incinel.cl"
+                        correo_prevencion_2 = "prevencion2@incinel.cl"
+                        
+                        # Se arma la lista con el correo automático del centro + los fijos
+                        correo_centro = data.get('correo', remitente)
+                        lista_destinatarios = [correo_centro, correo_prevencion_1, correo_prevencion_2]
                         
                         msg = MIMEMultipart()
                         msg['From'] = remitente
-                        msg['To'] = destinatario
+                        msg['To'] = ", ".join(lista_destinatarios)
                         msg['Subject'] = f"Reporte HPT - {data.get('centro')} - {data.get('fecha')}"
-                        msg.attach(MIMEText("Se adjunta el reporte HPT operacional.", 'plain'))
+                        msg.attach(MIMEText("Se adjunta el reporte de Prevención de Riesgos (HPT) generado desde la plataforma TechTrident.", 'plain'))
 
                         with open(archivo_pdf, "rb") as attachment:
                             part = MIMEBase("application", "octet-stream")
@@ -426,7 +451,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         server = smtplib.SMTP('smtp.gmail.com', 587)
                         server.starttls()
                         server.login(remitente, password)
-                        server.send_message(msg)
+                        
+                        # Se envía a la lista completa
+                        server.sendmail(remitente, lista_destinatarios, msg.as_string())
                         server.quit()
 
                         st.success("HPT Compilada y Transmitida con éxito.")
