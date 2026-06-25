@@ -63,28 +63,7 @@ def init_connection():
 USUARIOS = {}
 CENTROS_AREAS = {}
 
-try:
-    supabase = init_connection()
-    # Consulta a tabla usuarios
-    res_usuarios = supabase.table('usuarios').select('*').execute()
-    USUARIOS = {row['usuario']: row['contrasena'] for row in res_usuarios.data}
-    
-    # Consulta a tabla centros
-    res_centros = supabase.table('centros').select('*').execute()
-    CENTROS_AREAS = {row['nombre']: row['area'] for row in res_centros.data}
-except Exception as e:
-    # Sistema de contingencia local en caso de fallo de conexión o tablas inexistentes
-    USUARIOS = {
-        "Ntorres": "17909926",
-        "Imuñoz": "12345678",
-        "Pasencio": "98765432"
-    }
-    CENTROS_AREAS = {
-        "Centro Ninualac": "Area Sur", "Centro Dring 3": "Area Sur", "Centro Punta cola": "Area Sur",
-        "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
-        "Centro Cordoba 1": "Area Austral", "Centro Cordoba 2": "Area Austral", "Centro Perez de Arce": "Area Austral"
-    }
-    # NUEVO: Diccionario de correos automáticos por centro
+# Diccionario de correos automáticos por centro (Corregido)
 CENTROS_CORREOS = {
     "Centro Ninualac": "ninualac@blumar.com", 
     "Centro Dring 3": "centro.dring@blumar.com", 
@@ -95,6 +74,26 @@ CENTROS_CORREOS = {
     "Centro Cordoba 1": "cordoba11@blumar.com", 
     "Centro Cordoba 2": "cordoba22@blumar.com", 
     "Centro Perez de Arce": "perez@blumar.com"
+}
+
+try:
+    supabase = init_connection()
+    res_usuarios = supabase.table('usuarios').select('*').execute()
+    USUARIOS = {row['usuario']: row['contrasena'] for row in res_usuarios.data}
+    
+    res_centros = supabase.table('centros').select('*').execute()
+    CENTROS_AREAS = {row['nombre']: row['area'] for row in res_centros.data}
+except Exception as e:
+    USUARIOS = {
+        "Ntorres": "17909926",
+        "Imuñoz": "12345678",
+        "Pasencio": "98765432"
+    }
+    CENTROS_AREAS = {
+        "Centro Ninualac": "Area Sur", "Centro Dring 3": "Area Sur", "Centro Punta cola": "Area Sur",
+        "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
+        "Centro Cordoba 1": "Area Austral", "Centro Cordoba 2": "Area Austral", "Centro Perez de Arce": "Area Austral"
+    }
     st.sidebar.warning("Advertencia: Operando con base de datos de contingencia (Local).")
 
 # 4. Inicialización del Administrador de Estados (Session State)
@@ -114,7 +113,6 @@ if 'hpt_data' not in st.session_state:
         "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6
     }
 
-# Funciones de Navegación
 def set_page(page_name):
     st.session_state.current_page = page_name
 
@@ -137,7 +135,6 @@ if not st.session_state.logged_in:
             submitted = st.form_submit_button("INGRESAR", use_container_width=True)
             
             if submitted:
-                # Validación contra la base de datos (Supabase o Local)
                 if user in USUARIOS and str(USUARIOS[user]) == str(password):
                     st.session_state.logged_in = True
                     st.session_state.current_user = user
@@ -161,7 +158,8 @@ elif st.session_state.current_page == 'main_menu':
             st.rerun()
     with col2:
         if st.button("📊 REPORTE DIARIO", use_container_width=True):
-            st.info("Módulo en desarrollo.")
+            set_page('reporte_diario')
+            st.rerun()
     with col3:
         if st.button("🔒 Cerrar Sesión", use_container_width=True):
             st.session_state.logged_in = False
@@ -196,41 +194,42 @@ elif st.session_state.current_page == 'hpt_nuevo':
     st.title("Nueva HPT - Paso " + str(st.session_state.hpt_step))
     st.progress(st.session_state.hpt_step / 4.0)
     
-    # --- PASO 1: DATOS GENERALES ---
+    # --- PASO 1: DATOS GENERALES (CORRECCIÓN VISUAL) ---
     if st.session_state.hpt_step == 1:
         st.subheader("Datos Operativos")
         
         opciones_empresa = ["Salmones Blumar", "Salmones Blumar Magallanes"]
-        idx_empresa = opciones_empresa.index(st.session_state.hpt_data["empresa"]) if st.session_state.hpt_data["empresa"] in opciones_empresa else 0
+        idx_empresa = opciones_empresa.index(st.session_state.hpt_data.get("empresa", opciones_empresa[0])) if st.session_state.hpt_data.get("empresa") in opciones_empresa else 0
         empresa = st.selectbox("Empresa", opciones_empresa, index=idx_empresa)
         
+        # Agrupación 1: Fechas y Horas alineadas
         col1, col2 = st.columns(2)
         with col1:
-            fecha = st.date_input("Fecha", value=st.session_state.hpt_data["fecha"])
-            hora_inicio = st.time_input("Hora de Inicio", value=st.session_state.hpt_data["hora_inicio"])
-            encargado = st.text_input("Encargado del Centro", value=st.session_state.hpt_data["encargado"])
-            apr1 = st.text_input("Asesor Prevención Riesgos 1", value=st.session_state.hpt_data["apr1"])
-        
-       with col2:
+            fecha = st.date_input("Fecha", value=st.session_state.hpt_data.get("fecha", datetime.date.today()))
+            hora_inicio = st.time_input("Hora de Inicio", value=st.session_state.hpt_data.get("hora_inicio", datetime.datetime.now().time()))
+            
+        with col2:
             opciones_centros = list(CENTROS_AREAS.keys())
-            idx_centro = opciones_centros.index(st.session_state.hpt_data["centro"]) if st.session_state.hpt_data["centro"] in opciones_centros else 0
-            
-            # El usuario elige el centro
+            idx_centro = opciones_centros.index(st.session_state.hpt_data.get("centro", opciones_centros[0])) if st.session_state.hpt_data.get("centro") in opciones_centros else 0
             centro = st.selectbox("Centro de Cultivo", opciones_centros, index=idx_centro)
+            hora_termino = st.time_input("Hora de Término", value=st.session_state.hpt_data.get("hora_termino", datetime.datetime.now().time()))
             
-            # El sistema autoasigna Área y Correo
-            area_asignada = CENTROS_AREAS.get(centro, "Desconocida")
-            correo_asignado = CENTROS_CORREOS.get(centro, "sin_correo@blumar.com")
+        # Variables Autocompletadas
+        area_asignada = CENTROS_AREAS.get(centro, "Desconocida")
+        correo_asignado = CENTROS_CORREOS.get(centro, "sin_correo@blumar.com")
+        st.info(f"📍 Área Asignada: **{area_asignada}** | ✉️ Correo Automático: **{correo_asignado}**")
+        correo = correo_asignado 
+        
+        # Agrupación 2: Personal
+        col3, col4 = st.columns(2)
+        with col3:
+            encargado = st.text_input("Encargado del Centro", value=st.session_state.hpt_data.get("encargado", ""))
+            apr1 = st.text_input("Asesor Prevención Riesgos 1", value=st.session_state.hpt_data.get("apr1", ""))
+        with col4:
+            st.write("") # Espaciador para forzar alineación vertical
+            apr2 = st.text_input("Asesor Prevención Riesgos 2", value=st.session_state.hpt_data.get("apr2", ""))
             
-            st.info(f"📍 Área Asignada: **{area_asignada}**")
-            
-            hora_termino = st.time_input("Hora de Término", value=st.session_state.hpt_data["hora_termino"])
-            
-            # La casilla de correo se llena sola y se bloquea (disabled=True)
-            correo = st.text_input("Correo del Centro (Automático)", value=correo_asignado, disabled=True)
-            
-            apr2 = st.text_input("Nombre Asesor Prevención 2", value=st.session_state.hpt_data["apr2"])
-        tarea = st.text_area("Tarea a Realizar", value=st.session_state.hpt_data["tarea"])
+        tarea = st.text_area("Tarea a Realizar", value=st.session_state.hpt_data.get("tarea", ""))
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
             st.session_state.hpt_data.update({
@@ -312,7 +311,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 set_step(4)
                 st.rerun()
 
-    # --- PASO 4: TOMA DE CONOCIMIENTO Y FIRMAS ---
+    # --- PASO 4: TOMA DE CONOCIMIENTO Y FIRMAS (CORRECCIÓN PDF) ---
     elif st.session_state.hpt_step == 4:
         st.subheader("Validación Final")
         
@@ -406,32 +405,37 @@ elif st.session_state.current_page == 'hpt_nuevo':
                             return False
 
                         y_firmas = pdf.get_y() + 5
+                        ancho_firma = 35 # Ajuste para evitar desbordes en hoja A4
                         
                         if procesar_firma(firma_relator, "f_relator.jpg"):
-                            pdf.image("f_relator.jpg", x=10, y=y_firmas, w=40)
+                            pdf.image("f_relator.jpg", x=15, y=y_firmas, w=ancho_firma)
                         if procesar_firma(firma_sup_serv, "f_serv.jpg"):
-                            pdf.image("f_serv.jpg", x=70, y=y_firmas, w=40)
+                            pdf.image("f_serv.jpg", x=80, y=y_firmas, w=ancho_firma)
                         if procesar_firma(firma_sup_sal, "f_sal.jpg"):
-                            pdf.image("f_sal.jpg", x=130, y=y_firmas, w=40)
+                            pdf.image("f_sal.jpg", x=145, y=y_firmas, w=ancho_firma)
                             
                         pdf.set_y(y_firmas + 30)
-                        pdf.set_font("Arial", "B", 8)
-                        pdf.cell(60, 5, "Firma Relator", align="C")
-                        pdf.cell(60, 5, "Firma Sup. Servicio", align="C")
-                        pdf.cell(60, 5, f"Firma {data.get('empresa')}", align="C")
+                        pdf.set_font("Arial", "B", 7) # Reducción de fuente para nombres largos
+                        
+                        # Truncar nombre de empresa si es excesivamente largo
+                        empresa_nombre = data.get('empresa', '')
+                        if len(empresa_nombre) > 22: 
+                            empresa_nombre = empresa_nombre[:20] + "..."
+                            
+                        pdf.cell(63, 5, "Firma Relator", align="C")
+                        pdf.cell(63, 5, "Firma Sup. Servicio", align="C")
+                        pdf.cell(63, 5, f"Firma {empresa_nombre}", align="C")
 
                         archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}.pdf"
                         pdf.output(archivo_pdf)
 
-                        # Rutina SMTP
+                        # Rutina SMTP HPT
                         remitente = st.secrets["EMAIL_USER"]
                         password = st.secrets["EMAIL_PASS"]
                         
-                        # AQUÍ DEFINES LOS CORREOS FIJOS DE PREVENCIÓN DE RIESGOS
                         correo_prevencion_1 = "prevencion1@incinel.cl"
                         correo_prevencion_2 = "prevencion2@incinel.cl"
                         
-                        # Se arma la lista con el correo automático del centro + los fijos
                         correo_centro = data.get('correo', remitente)
                         lista_destinatarios = [correo_centro, correo_prevencion_1, correo_prevencion_2]
                         
@@ -451,8 +455,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         server = smtplib.SMTP('smtp.gmail.com', 587)
                         server.starttls()
                         server.login(remitente, password)
-                        
-                        # Se envía a la lista completa
                         server.sendmail(remitente, lista_destinatarios, msg.as_string())
                         server.quit()
 
@@ -463,3 +465,107 @@ elif st.session_state.current_page == 'hpt_nuevo':
                             
                     except Exception as e:
                         st.error(f"Falla de ejecución técnica: {e}")
+
+# ---------------------------------------------------------
+# MÓDULO 5: REPORTE DIARIO (NUEVO Y AISLADO)
+# ---------------------------------------------------------
+elif st.session_state.current_page == 'reporte_diario':
+    st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
+    st.title("Reporte Diario Operativo")
+    st.divider()
+
+    with st.form("form_reporte_diario"):
+        st.subheader("Datos Operacionales")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            fecha_rd = st.date_input("Fecha", value=datetime.date.today())
+            piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.current_user)
+            
+            opciones_centros = list(CENTROS_AREAS.keys())
+            centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
+            jaula_rd = st.text_input("Jaula / Balsa Trabajada (Ej: Balsa 104)")
+            
+        with col2:
+            hora_rd = st.time_input("Hora de Emisión", value=datetime.datetime.now().time())
+            
+            area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
+            st.info(f"📍 Área Asignada: **{area_rd}**")
+            
+            condicion_puerto = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
+            correo_destino_rd = st.text_input("Correo de Destino (Cliente/Jefatura)")
+            
+        tarea_rd = st.text_area("Descripción de la Tarea Realizada")
+        
+        submit_rd = st.form_submit_button("GENERAR Y ENVIAR REPORTE DIARIO", type="primary", use_container_width=True)
+
+        if submit_rd:
+            if not correo_destino_rd:
+                st.error("Debe ingresar un correo de destino.")
+            else:
+                with st.spinner("Procesando Reporte Diario..."):
+                    try:
+                        # Generación PDF Reporte Diario
+                        pdf_rd = FPDF()
+                        pdf_rd.add_page()
+                        
+                        if os.path.exists("logo.png"):
+                            pdf_rd.image("logo.png", x=10, y=8, w=30)
+                        
+                        pdf_rd.set_font("Arial", "B", 14)
+                        pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", ln=True, align="C")
+                        pdf_rd.ln(5)
+                        
+                        pdf_rd.set_font("Arial", "B", 10)
+                        pdf_rd.cell(0, 8, "DATOS GENERALES", ln=True)
+                        pdf_rd.set_font("Arial", "", 9)
+                        pdf_rd.cell(0, 6, f"Fecha: {fecha_rd} | Hora: {hora_rd}", ln=True)
+                        pdf_rd.cell(0, 6, f"Piloto ROV: {piloto_rd}", ln=True)
+                        pdf_rd.cell(0, 6, f"Area: {area_rd} | Centro de Cultivo: {centro_rd}", ln=True)
+                        pdf_rd.cell(0, 6, f"Condicion de Puerto: {condicion_puerto}", ln=True)
+                        pdf_rd.line(10, pdf_rd.get_y(), 200, pdf_rd.get_y())
+                        pdf_rd.ln(3)
+                        
+                        pdf_rd.set_font("Arial", "B", 10)
+                        pdf_rd.cell(0, 8, "DETALLE OPERATIVO", ln=True)
+                        pdf_rd.set_font("Arial", "", 9)
+                        pdf_rd.cell(0, 6, f"Estructura Intervenida: {jaula_rd}", ln=True)
+                        pdf_rd.ln(2)
+                        pdf_rd.set_font("Arial", "B", 9)
+                        pdf_rd.cell(0, 6, "Descripcion de la Tarea:", ln=True)
+                        pdf_rd.set_font("Arial", "", 9)
+                        pdf_rd.multi_cell(0, 6, tarea_rd)
+                        
+                        archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}.pdf"
+                        pdf_rd.output(archivo_pdf_rd)
+
+                        # Rutina SMTP Aislada (Solo envía al correo indicado, sin incluir Prevención)
+                        remitente = st.secrets["EMAIL_USER"]
+                        password = st.secrets["EMAIL_PASS"]
+                        
+                        msg = MIMEMultipart()
+                        msg['From'] = remitente
+                        msg['To'] = correo_destino_rd
+                        msg['Subject'] = f"Reporte Diario ROV - {centro_rd} - {fecha_rd}"
+                        msg.attach(MIMEText("Se adjunta el Reporte Diario de operaciones ROV.", 'plain'))
+
+                        with open(archivo_pdf_rd, "rb") as attachment:
+                            part = MIMEBase("application", "octet-stream")
+                            part.set_payload(attachment.read())
+                        encoders.encode_base64(part)
+                        part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_rd}")
+                        msg.attach(part)
+
+                        server = smtplib.SMTP('smtp.gmail.com', 587)
+                        server.starttls()
+                        server.login(remitente, password)
+                        server.send_message(msg)
+                        server.quit()
+
+                        st.success("Reporte Diario emitido exitosamente.")
+                        
+                        with open(archivo_pdf_rd, "rb") as pdf_file:
+                            st.download_button(label="📥 Descargar Copia PDF", data=pdf_file, file_name=archivo_pdf_rd, mime="application/pdf")
+
+                    except Exception as e:
+                        st.error(f"Error en la ejecución técnica: {e}")
