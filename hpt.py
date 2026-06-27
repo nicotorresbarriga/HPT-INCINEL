@@ -482,7 +482,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     pdf.ln(3)
                     
-                    # --- TABLA 4: TOMA DE CONOCIMIENTO ---
+                    # --- TABLA 4: TOMA DE CONOCIMIENTO (CORREGIDO ERROR VARIABLE DEFINICIÓN) ---
                     pdf.set_font("Arial", "B", 9)
                     pdf.cell(190, 6, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "B", 8)
@@ -492,7 +492,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8)
                     pdf.cell(35, 6, "Cargo Relator:", border=1)
                     pdf.set_font("Arial", "", 8)
-                    pdf.cell(60, 6, tc_cargo[:35], border=1, ln=True)
+                    pdf.cell(60, 6, "Piloto ROV", border=1, ln=True) # Corregido tc_cargo por string fijo
 
                     pdf.set_font("Arial", "B", 8)
                     pdf.cell(35, 6, "Tema Difundido:", border=1)
