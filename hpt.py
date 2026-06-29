@@ -85,11 +85,14 @@ CENTROS_CORREOS = {
     "Centro Perez de Arce": "perez@blumar.com"
 }
 
-CORREOS_PREVENCION = ["prevencion1@incinel.cl", "prevencion2@incinel.cl"]
+# CORREOS UNIFICADOS (Operaciones y Prevención)
+CORREOS_PREVENCION = ["reportesrovincinel@gmail.com", "reportesrovincinel@gmail.com"]
 
+# RANGOS HORARIOS ESTANDARIZADOS
 RANGO_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
 RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) for m in (0, 30)] 
 RANGO_DURACION = ["5 minutos", "10 minutos", "15 minutos", "20 minutos", "25 minutos", "30 minutos"]
+RANGO_HORA_DIFUSION = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 13) for m in (0, 15, 30, 45) if not (h == 12 and m > 0)]
 
 try:
     supabase = init_connection()
@@ -136,7 +139,6 @@ def set_page(page_name):
 def set_step(step_number):
     st.session_state.hpt_step = step_number
 
-# Definición global para evitar error de alcance
 def procesar_firma(canvas_obj, filename):
     if canvas_obj.image_data is not None:
         img_data = canvas_obj.image_data
@@ -172,7 +174,7 @@ if not st.session_state.logged_in:
                     st.error("Credenciales inválidas.")
 
 # ---------------------------------------------------------
-# MÓDULO 2: MENÚ PRINCIPAL EXPANDIDO
+# MÓDULO 2: MENÚ PRINCIPAL
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'main_menu':
     st.title("Sistema de Gestión Operativa")
@@ -189,14 +191,14 @@ elif st.session_state.current_page == 'main_menu':
             set_page('reporte_diario')
             st.rerun()
     with col3:
-        if st.button("📊 HISTORIAL Y BÚSQUEDA", use_container_width=True):
+        if st.button("📊 HISTORIAL / AUDITORÍA", use_container_width=True):
             set_page('modulo_busqueda')
             st.rerun()
             
     st.markdown("<br>", unsafe_allow_html=True)
     col_dash, col_logout = st.columns(2)
     with col_dash:
-        if st.button("📈 PANEL DE GRÁFICOS GERENCIALES", use_container_width=True):
+        if st.button("📈 GRÁFICOS GERENCIALES", use_container_width=True):
             set_page('panel_graficos')
             st.rerun()
     with col_logout:
@@ -253,10 +255,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
         st.info(f"⚓ Área Asignada: **{area_asignada}** | 📬 Correo Destino: **{correo_asignado}**")
         correo = correo_asignado 
         
-        st.markdown("🔒 **Asesores de Prevención (Envío Fijo)**")
+        st.markdown("🔒 **Asesores de Prevención y Operaciones**")
         col3, col4 = st.columns(2)
-        with col3: st.text_input("Asesor Prevención 1", value=CORREOS_PREVENCION[0], disabled=True)
-        with col4: st.text_input("Asesor Prevención 2", value=CORREOS_PREVENCION[1], disabled=True)
+        with col3: st.text_input("Prevención 1", value=CORREOS_PREVENCION[0], disabled=True)
+        with col4: st.text_input("Prevención 2", value=CORREOS_PREVENCION[1], disabled=True)
             
         tarea = st.text_input("Tarea a Realizar", value=st.session_state.hpt_data.get("tarea", ""))
         
@@ -338,7 +340,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
             with col2:
-                tc_hora = st.time_input("Hora Difusión")
+                tc_hora = st.selectbox("Hora Difusión", RANGO_HORA_DIFUSION)
                 idx_dur = RANGO_DURACION.index(st.session_state.hpt_data["tc_duracion"]) if st.session_state.hpt_data["tc_duracion"] in RANGO_DURACION else 2
                 tc_duracion = st.selectbox("Duración Difusión", RANGO_DURACION, index=idx_dur)
                 
@@ -428,11 +430,21 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}.pdf"
                     pdf.output(archivo_pdf)
 
+                    # SUBIDA DEL PDF A SUPABASE STORAGE Y OBTENCIÓN DE LINK
+                    url_pdf_nube = ""
+                    try:
+                        with open(archivo_pdf, "rb") as f:
+                            supabase.storage.from_("documentos").upload(path=archivo_pdf, file=f, file_options={"content-type": "application/pdf"})
+                        url_pdf_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf)
+                    except Exception as upload_error:
+                        pass # Continúa si el bucket no está creado aún
+
                     row_data = {
                         "fecha": str(data.get('fecha')), "usuario": st.session_state.current_user,
                         "empresa": data.get('empresa'), "centro": data.get('centro'), "area": data.get('area'),
                         "ponton": data.get('ponton'), "condicion_puerto": data.get('condicion_puerto'),
-                        "hora_inicio": data.get('hora_inicio'), "hora_termino": data.get('hora_termino'), "tarea": data.get('tarea')
+                        "hora_inicio": data.get('hora_inicio'), "hora_termino": data.get('hora_termino'), 
+                        "tarea": data.get('tarea'), "url_documento": url_pdf_nube
                     }
                     try:
                         supabase.table('hpt_history').insert(row_data).execute()
@@ -458,7 +470,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     barra_carga.progress(100, text="✅ ¡LISTO!")
                     time.sleep(0.5); barra_carga.empty()
                     st.success(f"HPT Guardada en la nube y Transmitida con éxito.")
-                    with open(archivo_pdf, "rb") as pdf_file: st.download_button(label="📥 Descargar PDF", data=pdf_file, file_name=archivo_pdf, mime="application/pdf")
+                    with open(archivo_pdf, "rb") as pdf_file: st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=archivo_pdf, mime="application/pdf")
                 except Exception as e:
                     barra_carga.empty(); st.error(f"Falla: {e}")
 
@@ -472,23 +484,27 @@ elif st.session_state.current_page == 'reporte_diario':
 
     with st.form("form_reporte_diario"):
         st.subheader("Datos Operacionales de Faena")
+        
+        # ALINEACIÓN Y REACTIVIDAD VISUAL CORREGIDA
+        opciones_centros = list(CENTROS_AREAS.keys())
+        centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
+        
+        area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
+        correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
+        st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
+        
         col1, col2 = st.columns(2)
         with col1:
             fecha_rd = st.date_input("Fecha", value=datetime.date.today())
             piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.current_user)
-            opciones_centros = list(CENTROS_AREAS.keys())
-            centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
             jaula_rd = st.text_input("Jaula / Balsa Trabajada")
+            ponton_rd = st.text_input("Nombre Pontón")
         with col2:
             hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGO_INICIO)
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
-            area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
-            correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
-            st.info(f"⚓ Área Asignada: **{area_rd}**")
             condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
-            ponton_rd = st.text_input("Nombre Pontón")
-            correo_principal_rd = st.text_input("Correo Centro", value=correo_asignado_rd, disabled=True)
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)")
+            # El correo de operaciones está precargado para automatizar la gestión de la empresa
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", value="reportesrovincinel@gmail.com")
             
         tarea_rd = st.text_area("Descripción de la Tarea Realizada")
         submit_rd = st.form_submit_button("GENERAR Y ENVIAR REPORTE DIARIO", type="primary", use_container_width=True)
@@ -517,10 +533,18 @@ elif st.session_state.current_page == 'reporte_diario':
                 archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}.pdf"
                 pdf_rd.output(archivo_pdf_rd)
 
+                url_pdf_rd_nube = ""
+                try:
+                    with open(archivo_pdf_rd, "rb") as f:
+                        supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
+                    url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
+                except Exception as upload_error:
+                    pass
+
                 datos_rd = {
                     "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
                     "jaula": jaula_rd, "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd), "hora_termino": str(hora_termino_rd),
-                    "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd
+                    "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube
                 }
                 try:
                     supabase.table('reportes_history').insert(datos_rd).execute()
@@ -531,7 +555,7 @@ elif st.session_state.current_page == 'reporte_diario':
                 
                 remitente = st.secrets["EMAIL_USER"]
                 password = st.secrets["EMAIL_PASS"]
-                lista_destinatarios_rd = [correo_principal_rd]
+                lista_destinatarios_rd = [correo_asignado_rd]
                 if correo_adicional_rd.strip():
                     lista_destinatarios_rd.extend([e.strip() for e in correo_adicional_rd.split(',') if e.strip()])
                 
@@ -556,7 +580,7 @@ elif st.session_state.current_page == 'reporte_diario':
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'modulo_busqueda':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("Historial de Documentación")
+    st.title("Historial de Documentación y Descargas")
     st.divider()
     
     rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"])
@@ -570,7 +594,7 @@ elif st.session_state.current_page == 'modulo_busqueda':
             acceso_concedido = True
             st.success("Acceso Gerencial Desbloqueado.")
             try:
-                res = supabase.table('hpt_history').select('*').execute()
+                res = supabase.table('hpt_history').select('*').order('id', desc=True).execute()
                 registros_hpt = res.data
             except:
                 registros_hpt = st.session_state.local_hpt_history
@@ -581,7 +605,7 @@ elif st.session_state.current_page == 'modulo_busqueda':
         user_actual = st.session_state.current_user
         st.info(f"Mostrando únicamente registros del Piloto: **{user_actual}**")
         try:
-            res = supabase.table('hpt_history').select('*').filter('usuario', 'eq', user_actual).execute()
+            res = supabase.table('hpt_history').select('*').filter('usuario', 'eq', user_actual).order('id', desc=True).execute()
             registros_hpt = res.data
         except:
             registros_hpt = [r for r in st.session_state.local_hpt_history if r['usuario'] == user_actual]
@@ -589,7 +613,18 @@ elif st.session_state.current_page == 'modulo_busqueda':
     if acceso_concedido:
         if registros_hpt:
             df = pd.DataFrame(registros_hpt)
-            st.dataframe(df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto']], use_container_width=True)
+            
+            # FORMATO CON ENLACE DE DESCARGA ACTIVO
+            if 'url_documento' in df.columns:
+                st.dataframe(
+                    df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']],
+                    column_config={
+                        "url_documento": st.column_config.LinkColumn("Enlace PDF", display_text="📥 Descargar PDF")
+                    },
+                    use_container_width=True
+                )
+            else:
+                st.dataframe(df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto']], use_container_width=True)
         else:
             st.info("No se registran datos en el historial solicitado.")
 
