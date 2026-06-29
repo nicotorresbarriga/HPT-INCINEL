@@ -107,7 +107,6 @@ except Exception as e:
     }
     st.sidebar.warning("Advertencia: Conexión local activa.")
 
-# Inicialización de historial local redundante (contingencia)
 if 'local_hpt_history' not in st.session_state:
     st.session_state.local_hpt_history = []
 if 'local_reportes_history' not in st.session_state:
@@ -130,11 +129,23 @@ if 'hpt_data' not in st.session_state:
         "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
     }
 
+# --- FUNCIONES GLOBALES ---
 def set_page(page_name):
     st.session_state.current_page = page_name
 
 def set_step(step_number):
     st.session_state.hpt_step = step_number
+
+# Definición global para evitar error de alcance
+def procesar_firma(canvas_obj, filename):
+    if canvas_obj.image_data is not None:
+        img_data = canvas_obj.image_data
+        firma_img = Image.fromarray((img_data).astype('uint8'), mode='RGBA')
+        fondo_blanco = Image.new("RGB", firma_img.size, (255, 255, 255))
+        fondo_blanco.paste(firma_img, mask=firma_img.split()[3])
+        fondo_blanco.save(filename)
+        return True
+    return False
 
 # ---------------------------------------------------------
 # MÓDULO 1: SISTEMA DE AUTENTICACIÓN (LOGIN)
@@ -417,7 +428,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}.pdf"
                     pdf.output(archivo_pdf)
 
-                    # PERSISTENCIA EN LA NUBE (NUEVA FUNCIÓN SUPABASE)
                     row_data = {
                         "fecha": str(data.get('fecha')), "usuario": st.session_state.current_user,
                         "empresa": data.get('empresa'), "centro": data.get('centro'), "area": data.get('area'),
@@ -470,7 +480,8 @@ elif st.session_state.current_page == 'reporte_diario':
             centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
             jaula_rd = st.text_input("Jaula / Balsa Trabajada")
         with col2:
-            hora_rd = st.time_input("Hora de Emisión", value=datetime.datetime.now().time())
+            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGO_INICIO)
+            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
             area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
             correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
             st.info(f"⚓ Área Asignada: **{area_rd}**")
@@ -491,7 +502,7 @@ elif st.session_state.current_page == 'reporte_diario':
                 
                 pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(fecha_rd), border=1)
-                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Hora:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(hora_rd), border=1, ln=True)
+                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Rango Horario:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, f"{hora_inicio_rd} - {hora_termino_rd}", border=1, ln=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Piloto ROV:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, piloto_rd, border=1)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, ponton_rd, border=1, ln=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf.cell(30, 6, "Centro Cultivo:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, centro_rd, border=1)
@@ -506,25 +517,23 @@ elif st.session_state.current_page == 'reporte_diario':
                 archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}.pdf"
                 pdf_rd.output(archivo_pdf_rd)
 
-                # Guardar en Base de Datos de Supabase
                 datos_rd = {
                     "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
                     "jaula": jaula_rd, "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd), "hora_termino": str(hora_termino_rd),
                     "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd
                 }
                 try:
-                    supabase.table('reportes_history').insert(datos_hpt_db).execute()
+                    supabase.table('reportes_history').insert(datos_rd).execute()
                 except:
                     st.session_state.local_reportes_history.append(datos_rd)
 
                 barra_rd.progress(60, text="📧 Enviando PDF...")
                 
-                # SMTP
                 remitente = st.secrets["EMAIL_USER"]
                 password = st.secrets["EMAIL_PASS"]
                 lista_destinatarios_rd = [correo_principal_rd]
                 if correo_adicional_rd.strip():
-                    lista_destinatarios_rd.extend([e.strip() for email in correo_adicional_rd.split(',') if email.strip()])
+                    lista_destinatarios_rd.extend([e.strip() for e in correo_adicional_rd.split(',') if e.strip()])
                 
                 msg = MIMEMultipart(); msg['From'] = remitente; msg['To'] = ", ".join(lista_destinatarios_rd); msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
                 msg.attach(MIMEText("Se adjunta el Reporte Diario.", 'plain'))
@@ -545,9 +554,6 @@ elif st.session_state.current_page == 'reporte_diario':
 # ---------------------------------------------------------
 # MÓDULO 6: HISTORIAL Y BÚSQUEDA (ADMINISTRADOR / USUARIO)
 # ---------------------------------------------------------
-elif st.session_state.current_page == 'reporte_diario':
-    pass # Replaced by integrated module below
-
 elif st.session_state.current_page == 'modulo_busqueda':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.title("Historial de Documentación")
