@@ -131,6 +131,10 @@ if 'hpt_data' not in st.session_state:
         "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
         "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
     }
+if 'admin_acceso_historial' not in st.session_state:
+    st.session_state.admin_acceso_historial = False
+if 'admin_acceso_graficos' not in st.session_state:
+    st.session_state.admin_acceso_graficos = False
 
 # --- FUNCIONES GLOBALES ---
 def set_page(page_name):
@@ -260,13 +264,16 @@ elif st.session_state.current_page == 'hpt_nuevo':
         with col3: st.text_input("Prevención 1", value=CORREOS_PREVENCION[0], disabled=True)
         with col4: st.text_input("Prevención 2", value=CORREOS_PREVENCION[1], disabled=True)
             
-        tarea = st.text_input("Tarea a Realizar", value=st.session_state.hpt_data.get("tarea", ""))
+        # Reemplazo de campo texto por menú de faena
+        opciones_faena = ["Inspeccion Red Lobera", "Inspeccion Red pecera", "Inspeccion Tensores", "Recuperacion inorganico", "Apoyo Centro de cultivo", "Extraccion de mortalidad", "Mantencion equipos"]
+        idx_faena = opciones_faena.index(st.session_state.hpt_data.get("faena", opciones_faena[0])) if st.session_state.hpt_data.get("faena") in opciones_faena else 0
+        faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
             st.session_state.hpt_data.update({
                 "empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio,
                 "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo,
-                "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "tarea": tarea
+                "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena
             })
             set_step(2)
             st.rerun()
@@ -302,10 +309,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     st.rerun()
 
     elif st.session_state.hpt_step == 3:
-        st.subheader("Faena a Realizar y Checklist ERC")
-        opciones_faena = ["Inspeccion Red Lobera", "Inspeccion Red pecera", "Inspeccion Tensores", "Recuperacion inorganico", "Apoyo Centro de cultivo", "Extraccion de mortalidad", "Mantencion equipos"]
-        idx_faena = opciones_faena.index(st.session_state.hpt_data["faena"]) if st.session_state.hpt_data["faena"] in opciones_faena else 0
-        faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
+        st.subheader("Detalles de Faena y Checklist ERC")
+        
+        # Inserción de recuadro de detalles de faena (antes tarea en paso 1)
+        tarea = st.text_area("Detalles de faena a realizar", value=st.session_state.hpt_data.get("tarea", ""))
         
         estado_erc = st.session_state.hpt_data["erc"]
         st.markdown("**Checklist ERC**")
@@ -322,12 +329,12 @@ elif st.session_state.current_page == 'hpt_nuevo':
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back3", use_container_width=True):
-                st.session_state.hpt_data.update({"faena": faena, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
+                st.session_state.hpt_data.update({"tarea": tarea, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
                 set_step(2)
                 st.rerun()
         with col_btn2:
             if st.button("SIGUIENTE ➡️", key="next3", use_container_width=True):
-                st.session_state.hpt_data.update({"faena": faena, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
+                st.session_state.hpt_data.update({"tarea": tarea, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
                 set_step(4)
                 st.rerun()
 
@@ -378,7 +385,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8)
                     pdf.cell(35, 6, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('empresa', '')[:35], border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Centro de Cultivo:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('centro', '')[:35], border=1, ln=True)
-                    pdf.cell(35, 6, "Fecha Maniobra:", border=1); pdf.cell(60, 6, str(data.get('fecha', '')), border=1)
+                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Fecha Maniobra:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, str(data.get('fecha', '')), border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Area Geografica:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('area', '')[:35], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Hora Inicio Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, str(data.get('hora_inicio', '')), border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Hora Termino Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, str(data.get('hora_termino', '')), border=1, ln=True)
@@ -387,26 +394,35 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Encargado Centro:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('encargado', '')[:80], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Prevencionista 1:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, CORREOS_PREVENCION[0], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Prevencionista 2:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, CORREOS_PREVENCION[1], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Correo Centro:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('correo', '')[:80], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Faena Primaria:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('faena', '')[:80], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Tarea Especifica:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('tarea', '')[:80], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Detalles Especificos:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('tarea', '')[:80], border=1, ln=True)
 
                     pdf.ln(3)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL (EPP CHECKLIST)", border=1, ln=True, fill=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "", 8)
                     epp_labels = ["Guantes", "Chaleco", "Zapatos", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
                     epp_vals = data.get('epp', [])
-                    for i in range(len(epp_labels)):
-                        check = "[ X ]" if i < len(epp_vals) and epp_vals[i] else "[   ]"
-                        pdf.cell(190/3, 6, f"{check} {epp_labels[i]}", border=1, ln=1 if (i + 1) % 3 == 0 or i == len(epp_labels) - 1 else 0)
+                    epp_seleccionados = [epp_labels[i] for i in range(len(epp_labels)) if i < len(epp_vals) and epp_vals[i]]
+                    
+                    if not epp_seleccionados:
+                        pdf.cell(190, 6, "Ningun EPP registrado.", border=1, ln=True)
+                    else:
+                        for i, epp in enumerate(epp_seleccionados):
+                            pdf.cell(190/3, 6, f"[ X ] {epp}", border=1, ln=1 if (i + 1) % 3 == 0 or i == len(epp_seleccionados) - 1 else 0)
 
                     pdf.ln(3)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "3. RIESGOS CRITICOS EVALUADOS (ERC)", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "", 8)
                     erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Navegacion", "Atrapamiento"]
                     erc_vals = data.get('erc', [])
-                    for i in range(len(erc_labels)):
-                        check = "[ X ]" if i < len(erc_vals) and erc_vals[i] else "[   ]"
-                        pdf.cell(190/2, 6, f"{check} {erc_labels[i]}", border=1, ln=1 if (i + 1) % 2 == 0 or i == len(erc_labels) - 1 else 0)
+                    erc_seleccionados = [erc_labels[i] for i in range(len(erc_labels)) if i < len(erc_vals) and erc_vals[i]]
+                    
+                    if not erc_seleccionados:
+                        pdf.cell(190, 6, "Ningun Riesgo seleccionado.", border=1, ln=True)
+                    else:
+                        for i, erc in enumerate(erc_seleccionados):
+                            pdf.cell(190/2, 6, f"[ X ] {erc}", border=1, ln=1 if (i + 1) % 2 == 0 or i == len(erc_seleccionados) - 1 else 0)
 
                     pdf.ln(3)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
@@ -482,17 +498,18 @@ elif st.session_state.current_page == 'reporte_diario':
     st.title("Reporte Diario Operativo")
     st.divider()
 
+    st.subheader("Datos Operacionales de Faena")
+    
+    # SECTOR REACTIVO: Selector fuera del formulario para actualizar de inmediato
+    opciones_centros = list(CENTROS_AREAS.keys())
+    centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
+    
+    area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
+    correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
+    st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
+
+    # Contenedor del Formulario
     with st.form("form_reporte_diario"):
-        st.subheader("Datos Operacionales de Faena")
-        
-        # ALINEACIÓN Y REACTIVIDAD VISUAL CORREGIDA
-        opciones_centros = list(CENTROS_AREAS.keys())
-        centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
-        
-        area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida")
-        correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
-        st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
-        
         col1, col2 = st.columns(2)
         with col1:
             fecha_rd = st.date_input("Fecha", value=datetime.date.today())
@@ -503,7 +520,6 @@ elif st.session_state.current_page == 'reporte_diario':
             hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGO_INICIO)
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
             condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
-            # El correo de operaciones está precargado para automatizar la gestión de la empresa
             correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", value="reportesrovincinel@gmail.com")
             
         tarea_rd = st.text_area("Descripción de la Tarea Realizada")
@@ -585,23 +601,29 @@ elif st.session_state.current_page == 'modulo_busqueda':
     
     rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"])
     
-    acceso_concedido = False
     registros_hpt = []
     
     if rol_busqueda == "Administrador":
-        clave_ingresada = st.text_input("Ingrese Pin de Seguridad Administrador", type="password")
-        if clave_ingresada == CLAVE_ADMIN:
-            acceso_concedido = True
+        if not st.session_state.admin_acceso_historial:
+            clave_ingresada = st.text_input("Ingrese Pin de Seguridad Administrador", type="password")
+            if st.button("Ingresar"):
+                if clave_ingresada == CLAVE_ADMIN:
+                    st.session_state.admin_acceso_historial = True
+                    st.rerun()
+                else:
+                    st.error("Código de seguridad incorrecto.")
+        else:
             st.success("Acceso Gerencial Desbloqueado.")
+            if st.button("Cerrar Vista Administrador"):
+                st.session_state.admin_acceso_historial = False
+                st.rerun()
+                
             try:
                 res = supabase.table('hpt_history').select('*').order('id', desc=True).execute()
                 registros_hpt = res.data
             except:
                 registros_hpt = st.session_state.local_hpt_history
-        elif clave_ingresada:
-            st.error("Código de seguridad incorrecto.")
     else:
-        acceso_concedido = True
         user_actual = st.session_state.current_user
         st.info(f"Mostrando únicamente registros del Piloto: **{user_actual}**")
         try:
@@ -610,12 +632,14 @@ elif st.session_state.current_page == 'modulo_busqueda':
         except:
             registros_hpt = [r for r in st.session_state.local_hpt_history if r['usuario'] == user_actual]
 
-    if acceso_concedido:
+    if (rol_busqueda == "Usuario Común") or (rol_busqueda == "Administrador" and st.session_state.admin_acceso_historial):
         if registros_hpt:
             df = pd.DataFrame(registros_hpt)
             
-            # FORMATO CON ENLACE DE DESCARGA ACTIVO
+            # Limpieza de url_documento para evitar fallas visuales con string "none" o cadenas vacias
             if 'url_documento' in df.columns:
+                df['url_documento'] = df['url_documento'].apply(lambda x: x if pd.notnull(x) and str(x).strip() != "" else None)
+                
                 st.dataframe(
                     df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']],
                     column_config={
@@ -636,8 +660,20 @@ elif st.session_state.current_page == 'panel_graficos':
     st.title("📈 Métricas e Inteligencia de Negocio")
     st.divider()
     
-    clave_dash = st.text_input("Autenticación Gerencial (Pin)", type="password", key="dash_pin")
-    if clave_dash == CLAVE_ADMIN:
+    if not st.session_state.admin_acceso_graficos:
+        clave_dash = st.text_input("Autenticación Gerencial (Pin)", type="password", key="dash_pin")
+        if st.button("Ingresar"):
+            if clave_dash == CLAVE_ADMIN:
+                st.session_state.admin_acceso_graficos = True
+                st.rerun()
+            else:
+                st.error("Código inválido.")
+    else:
+        st.success("Acceso Gerencial Desbloqueado.")
+        if st.button("Cerrar Vista Administrador"):
+            st.session_state.admin_acceso_graficos = False
+            st.rerun()
+
         try:
             res_hpt = supabase.table('hpt_history').select('*').execute()
             df_hpt = pd.DataFrame(res_hpt.data)
@@ -658,5 +694,3 @@ elif st.session_state.current_page == 'panel_graficos':
             st.bar_chart(piloto_counts)
         else:
             st.info("No existen suficientes registros en Supabase para estructurar gráficos de control estadístico.")
-    elif clave_dash:
-        st.error("Código inválido.")
