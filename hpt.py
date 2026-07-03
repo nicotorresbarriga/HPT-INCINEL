@@ -250,7 +250,7 @@ if not st.session_state.logged_in:
 # MÓDULO 2: MENÚ PRINCIPAL
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'main_menu':
-    st.title("Sistema de Gestión Operativa")
+    st.title(     "Sistema de Gestión Operativa")
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
     st.divider()
     
