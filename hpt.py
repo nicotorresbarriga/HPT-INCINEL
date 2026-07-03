@@ -228,10 +228,7 @@ if not st.session_state.logged_in:
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            # Sub-columnas para achicar aún más el logo
-            c_img1, c_img2, c_img3 = st.columns([1, 2, 1])
-            with c_img2:
-                st.image("logo.png", use_container_width=True)
+    st.image("logo.png", width=200) # <--- Cambia el 180 para achicar o agrandar
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
