@@ -11,13 +11,15 @@ from email import encoders
 from fpdf import FPDF
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
+import numpy as np
+import uuid
 from supabase import create_client, Client
 
 # 1. Configuración de página
 st.set_page_config(
     page_title="Plataforma TechTrident",
     page_icon="⚓",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
@@ -28,7 +30,7 @@ st.markdown(
     .stApp {
         background: linear-gradient(135deg, #000511 0%, #00122c 50%, #002353 100%);
     }
-    h1, h2, h3, p, label, .stMarkdown, span {
+    h1, h2, h3, p, label, .stMarkdown, span, .stCheckbox label span {
         color: #ffffff !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
@@ -45,15 +47,16 @@ st.markdown(
         background-color: #007a99;
         box-shadow: 0 6px 8px rgba(0,0,0,0.5);
     }
-    .stTextInput>div>div>input, .stSelectbox>div>div>select, .stTextArea>div>div>textarea {
+    .stTextInput>div>div>input, .stSelectbox>div>div>select, .stTextArea>div>div>textarea, .stNumberInput>div>div>input {
         border-radius: 6px;
         border: 1px solid #00a8cc;
         color: #1a202c !important;
         background-color: #f8fafc !important;
         font-weight: 500;
     }
-    div[data-testid="stCheckbox"] label span {
-        color: #ffffff !important;
+    ::placeholder {
+        color: #64748b !important;
+        opacity: 1;
     }
     </style>
     """,
@@ -114,6 +117,8 @@ if 'local_hpt_history' not in st.session_state:
     st.session_state.local_hpt_history = []
 if 'local_reportes_history' not in st.session_state:
     st.session_state.local_reportes_history = []
+if 'local_entrega_history' not in st.session_state:
+    st.session_state.local_entrega_history = []
 
 # 4. Inicialización del Administrador de Estados (Session State)
 if 'logged_in' not in st.session_state:
@@ -153,6 +158,130 @@ def procesar_firma(canvas_obj, filename):
         return True
     return False
 
+def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None):
+    pdf = FPDF()
+    pdf.set_margins(10, 10, 10)
+    pdf.set_auto_page_break(auto=True, margin=15) 
+    pdf.add_page()
+    
+    if os.path.exists(logo_filename):
+        pdf.image(logo_filename, x=10, y=10, h=25)
+        pdf.set_y(40) 
+    else:
+        pdf.set_y(15)
+        
+    pdf.set_font("Helvetica", 'B', 15)
+    pdf.set_fill_color(0, 51, 102) 
+    pdf.set_text_color(255, 255, 255) 
+    pdf.cell(190, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=1, ln=True, align='C', fill=True)
+    
+    pdf.set_font("Helvetica", 'I', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(190, 7, f"Documento generado el {datetime.date.today().strftime('%d/%m/%Y')}", border=1, ln=True, align='C')
+    pdf.ln(4)
+    
+    for seccion, campos in datos.items():
+        if pdf.get_y() > 250:
+            pdf.add_page()
+            
+        pdf.ln(3) 
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.set_fill_color(200, 215, 230) 
+        pdf.cell(190, 8, f"  {seccion.upper()}", border=1, ln=True, fill=True)
+        
+        for clave, valor in campos.items():
+            nombre_campo = clave.replace('_', ' ')
+            if pdf.get_y() > 265:
+                pdf.add_page()
+            
+            pdf.set_font("Helvetica", 'B', 10)
+            pdf.set_fill_color(240, 240, 240)
+            pdf.cell(190, 6, f" {nombre_campo}:", border=1, ln=True, fill=True)
+            pdf.set_font("Helvetica", '', 10)
+            
+            if isinstance(valor, list):
+                for i in range(0, len(valor), 2):
+                    item1 = f" - {valor[i]}".encode('latin-1', 'replace').decode('latin-1')
+                    item2 = f" - {valor[i+1]}".encode('latin-1', 'replace').decode('latin-1') if i+1 < len(valor) else ""
+                    pdf.cell(95, 6, item1, border="L", ln=0)
+                    pdf.cell(95, 6, item2, border="R", ln=1)
+                x = pdf.get_x()
+                y = pdf.get_y()
+                pdf.line(x, y, x+190, y)
+                pdf.ln(1)
+            else:
+                valor_seguro = str(valor).strip() if str(valor).strip() != "" else "Sin registro o sin novedades."
+                valor_seguro = valor_seguro.encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(190, 6, txt=f" {valor_seguro}", border=1)
+                pdf.ln(1) 
+
+    if imagenes_subidas:
+        pdf.add_page()
+        pdf.set_font("Helvetica", 'B', 12)
+        pdf.set_fill_color(200, 215, 230)
+        pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=1, ln=True, fill=True)
+        pdf.ln(5)
+        
+        col_img = 0
+        row_y = pdf.get_y()
+        max_h_row = 0
+        
+        for img_file in imagenes_subidas:
+            temp_path = f"temp_{uuid.uuid4().hex[:6]}_{img_file.name}"
+            with open(temp_path, "wb") as f:
+                f.write(img_file.getbuffer())
+                
+            with Image.open(temp_path) as pil_img:
+                if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
+                    pil_img = pil_img.convert('RGB')
+                    pil_img.save(temp_path)
+                w_px, h_px = pil_img.size
+                aspect = h_px / w_px
+                
+                if aspect > (80 / 85): 
+                    h_mm = 80
+                    w_mm = 80 / aspect
+                else: 
+                    w_mm = 85
+                    h_mm = 85 * aspect
+                
+            if col_img == 2:
+                col_img = 0
+                row_y += max_h_row + 10
+                max_h_row = 0
+                
+            if row_y + 85 > 280:
+                pdf.add_page()
+                row_y = pdf.get_y()
+                col_img = 0
+                max_h_row = 0
+                
+            x_pos = 15 if col_img == 0 else 110
+            pdf.rect(x_pos - 1, row_y - 1, w_mm + 2, h_mm + 2)
+            pdf.image(temp_path, x=x_pos, y=row_y, w=w_mm, h=h_mm)
+            
+            max_h_row = max(max_h_row, h_mm)
+            col_img += 1
+            os.remove(temp_path) 
+            
+        pdf.set_y(row_y + max_h_row + 10)
+
+    if pdf.get_y() > 230:
+        pdf.add_page()
+        
+    y_img = pdf.get_y() + 10
+    if firma_path and os.path.exists(firma_path):
+        pdf.image(firma_path, x=65, y=y_img, w=60, h=25)
+        
+    pdf.set_y(y_img + 25)
+    pdf.set_font("Helvetica", 'B', 10)
+    pdf.cell(190, 5, "_______________________", border=0, ln=1, align='C')
+    pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
+                
+    pdf.output(nombre_archivo)
+    return nombre_archivo
+
+
 # ---------------------------------------------------------
 # MÓDULO 1: SISTEMA DE AUTENTICACIÓN (LOGIN)
 # ---------------------------------------------------------
@@ -185,27 +314,25 @@ elif st.session_state.current_page == 'main_menu':
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
     st.divider()
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    c1, c2 = st.columns(2)
+    with c1:
         if st.button("⚓ MÓDULO HPT", use_container_width=True):
             set_page('hpt_menu')
             st.rerun()
-    with col2:
-        if st.button("🚢 REPORTE DIARIO", use_container_width=True):
-            set_page('reporte_diario')
+        if st.button("📋 ENTREGA DE TURNO", use_container_width=True):
+            set_page('entrega_turno')
             st.rerun()
-    with col3:
-        if st.button("📊 HISTORIAL / AUDITORÍA", use_container_width=True):
-            set_page('modulo_busqueda')
-            st.rerun()
-            
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_dash, col_logout = st.columns(2)
-    with col_dash:
         if st.button("📈 GRÁFICOS GERENCIALES", use_container_width=True):
             set_page('panel_graficos')
             st.rerun()
-    with col_logout:
+            
+    with c2:
+        if st.button("🚢 REPORTE DIARIO", use_container_width=True):
+            set_page('reporte_diario')
+            st.rerun()
+        if st.button("📊 HISTORIAL / AUDITORÍA", use_container_width=True):
+            set_page('modulo_busqueda')
+            st.rerun()
         if st.button("🔒 Cerrar Sesión", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.current_user = ""
@@ -264,7 +391,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
         with col3: st.text_input("Prevención 1", value=CORREOS_PREVENCION[0], disabled=True)
         with col4: st.text_input("Prevención 2", value=CORREOS_PREVENCION[1], disabled=True)
             
-        # Reemplazo de campo texto por menú de faena
         opciones_faena = ["Inspeccion Red Lobera", "Inspeccion Red pecera", "Inspeccion Tensores", "Recuperacion inorganico", "Apoyo Centro de cultivo", "Extraccion de mortalidad", "Mantencion equipos"]
         idx_faena = opciones_faena.index(st.session_state.hpt_data.get("faena", opciones_faena[0])) if st.session_state.hpt_data.get("faena") in opciones_faena else 0
         faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
@@ -311,7 +437,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
     elif st.session_state.hpt_step == 3:
         st.subheader("Detalles de Faena y Checklist ERC")
         
-        # Inserción de recuadro de detalles de faena (antes tarea en paso 1)
         tarea = st.text_area("Detalles de faena a realizar", value=st.session_state.hpt_data.get("tarea", ""))
         
         estado_erc = st.session_state.hpt_data["erc"]
@@ -436,31 +561,35 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
                     pdf.cell(95, 25, "", border=1); pdf.cell(95, 25, "", border=1, ln=True)
                     
-                    if procesar_firma(firma_sup_serv, "f_serv.jpg"): pdf.image("f_serv.jpg", x=35, y=pdf.get_y()-24, w=45)
-                    if procesar_firma(firma_encargado, "f_encargado.jpg"): pdf.image("f_encargado.jpg", x=130, y=pdf.get_y()-24, w=45)
+                    id_firmas = uuid.uuid4().hex[:8]
+                    f_serv = f"f_serv_{id_firmas}.jpg"
+                    f_enc = f"f_encargado_{id_firmas}.jpg"
+                    
+                    if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-24, w=45)
+                    if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-24, w=45)
                         
                     pdf.set_font("Arial", "B", 8)
                     pdf.cell(95, 6, "Firma Supervisor Servicio", border=1, align="C")
                     pdf.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
-                    archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}.pdf"
+                    identificador_unico = str(uuid.uuid4())[:8]
+                    archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}_{identificador_unico}.pdf"
                     pdf.output(archivo_pdf)
 
-                    # SUBIDA DEL PDF A SUPABASE STORAGE Y OBTENCIÓN DE LINK
                     url_pdf_nube = ""
                     try:
                         with open(archivo_pdf, "rb") as f:
                             supabase.storage.from_("documentos").upload(path=archivo_pdf, file=f, file_options={"content-type": "application/pdf"})
                         url_pdf_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf)
                     except Exception as upload_error:
-                        pass # Continúa si el bucket no está creado aún
+                        st.error(f"⚠️ Error al subir PDF: {upload_error}")
 
                     row_data = {
                         "fecha": str(data.get('fecha')), "usuario": st.session_state.current_user,
                         "empresa": data.get('empresa'), "centro": data.get('centro'), "area": data.get('area'),
                         "ponton": data.get('ponton'), "condicion_puerto": data.get('condicion_puerto'),
                         "hora_inicio": data.get('hora_inicio'), "hora_termino": data.get('hora_termino'), 
-                        "tarea": data.get('tarea'), "url_documento": url_pdf_nube
+                        "faena": data.get('faena'), "tarea": data.get('tarea'), "url_documento": url_pdf_nube
                     }
                     try:
                         supabase.table('hpt_history').insert(row_data).execute()
@@ -483,12 +612,17 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(remitente, password)
                     server.sendmail(remitente, lista_destinatarios, msg.as_string()); server.quit()
 
+                    # Limpieza de temporales
+                    if os.path.exists(f_serv): os.remove(f_serv)
+                    if os.path.exists(f_enc): os.remove(f_enc)
+
                     barra_carga.progress(100, text="✅ ¡LISTO!")
                     time.sleep(0.5); barra_carga.empty()
                     st.success(f"HPT Guardada en la nube y Transmitida con éxito.")
                     with open(archivo_pdf, "rb") as pdf_file: st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=archivo_pdf, mime="application/pdf")
                 except Exception as e:
                     barra_carga.empty(); st.error(f"Falla: {e}")
+
 
 # ---------------------------------------------------------
 # MÓDULO 5: REPORTE DIARIO OPERATIVO
@@ -500,7 +634,6 @@ elif st.session_state.current_page == 'reporte_diario':
 
     st.subheader("Datos Operacionales de Faena")
     
-    # SECTOR REACTIVO: Selector fuera del formulario para actualizar de inmediato
     opciones_centros = list(CENTROS_AREAS.keys())
     centro_rd = st.selectbox("Centro de Cultivo", opciones_centros)
     
@@ -508,7 +641,6 @@ elif st.session_state.current_page == 'reporte_diario':
     correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
     st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
 
-    # Contenedor del Formulario
     with st.form("form_reporte_diario"):
         col1, col2 = st.columns(2)
         with col1:
@@ -520,7 +652,9 @@ elif st.session_state.current_page == 'reporte_diario':
             hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGO_INICIO)
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
             condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", value="reportesrovincinel@gmail.com")
+            
+            # CORRECCIÓN DE INPUT DE CORREOS: Uso de placeholder sin value fijo conflictivo
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com, correo2@gmail.com")
             
         tarea_rd = st.text_area("Descripción de la Tarea Realizada")
         submit_rd = st.form_submit_button("GENERAR Y ENVIAR REPORTE DIARIO", type="primary", use_container_width=True)
@@ -537,16 +671,19 @@ elif st.session_state.current_page == 'reporte_diario':
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Rango Horario:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, f"{hora_inicio_rd} - {hora_termino_rd}", border=1, ln=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Piloto ROV:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, piloto_rd, border=1)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, ponton_rd, border=1, ln=True)
-                pdf_rd.set_font("Arial", "B", 8); pdf.cell(30, 6, "Centro Cultivo:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, centro_rd, border=1)
-                pdf_rd.set_font("Arial", "B", 8); pdf.cell(35, 6, "Area Asignada:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, area_rd, border=1, ln=True)
-                pdf_rd.set_font("Arial", "B", 8); pdf.cell(35, 6, "Condicion Puerto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, condicion_puerto_rd, border=1, ln=True)
+                
+                # CORRECCIÓN DE TYPO pdf. -> pdf_rd.
+                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, centro_rd, border=1)
+                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, area_rd, border=1, ln=True)
+                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(155, 6, condicion_puerto_rd, border=1, ln=True)
 
                 pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(40, 6, "Estructura Intervenida:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(150, 6, jaula_rd, border=1, ln=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=1, ln=True); pdf_rd.set_font("Arial", "", 8)
                 pdf_rd.multi_cell(190, 5, tarea_rd[:1000])
                 
-                archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}.pdf"
+                identificador_unico_rd = str(uuid.uuid4())[:8]
+                archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
                 pdf_rd.output(archivo_pdf_rd)
 
                 url_pdf_rd_nube = ""
@@ -554,8 +691,8 @@ elif st.session_state.current_page == 'reporte_diario':
                     with open(archivo_pdf_rd, "rb") as f:
                         supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
                     url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
-                except Exception as upload_error:
-                    pass
+                except Exception as upload_error_rd:
+                    st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
 
                 datos_rd = {
                     "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
@@ -571,6 +708,8 @@ elif st.session_state.current_page == 'reporte_diario':
                 
                 remitente = st.secrets["EMAIL_USER"]
                 password = st.secrets["EMAIL_PASS"]
+                
+                # Gestión dinámica de correos
                 lista_destinatarios_rd = [correo_asignado_rd]
                 if correo_adicional_rd.strip():
                     lista_destinatarios_rd.extend([e.strip() for e in correo_adicional_rd.split(',') if e.strip()])
@@ -587,73 +726,270 @@ elif st.session_state.current_page == 'reporte_diario':
                 time.sleep(0.5)
                 barra_rd.empty()
                 st.success(f"Reporte Diario enviado a: {', '.join(lista_destinatarios_rd)}")
+                with open(archivo_pdf_rd, "rb") as pdf_file: st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=archivo_pdf_rd, mime="application/pdf")
             except Exception as e:
                 barra_rd.empty()
                 st.error(f"Error técnico: {e}")
 
 # ---------------------------------------------------------
-# MÓDULO 6: HISTORIAL Y BÚSQUEDA (ADMINISTRADOR / USUARIO)
+# MÓDULO NUEVO: ENTREGA DE TURNO
+# ---------------------------------------------------------
+elif st.session_state.current_page == 'entrega_turno':
+    st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
+    st.title("Panel de Entrega de Turno Operativo")
+    st.subheader("Control de Equipos Submarinos y Novedades de Centro")
+    st.divider()
+
+    st.header("1. Información General")
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1: piloto_entrante = st.text_input("Piloto Entrante")
+    with c2: piloto_saliente = st.text_input("Piloto Saliente", value=st.session_state.current_user)
+    with c3: fecha_et = st.date_input("Fecha", datetime.date.today())
+    with c4: 
+        opciones_centros_et = list(CENTROS_AREAS.keys())
+        centro_et = st.selectbox("Centro", opciones_centros_et)
+    with c5: 
+        area_et = CENTROS_AREAS.get(centro_et, "Desconocida")
+        st.text_input("Área Asignada", value=area_et, disabled=True)
+
+    st.markdown("---")
+    st.header("2. Equipos en Terreno (ROV)")
+    c6, c7, c8, c9 = st.columns(4)
+    with c6: equipo_rov = st.selectbox("Modelo de Equipo", ["DTG3", "MC Petrohue", "Chasing Promax", "Chasing Promax 2", "Fifish vs xpert"])
+    with c7: estado_equipo = st.selectbox("Estado General del ROV", ["Bueno", "Regular", "Requiere cambio"])
+    with c8: estado_controlador = st.selectbox("Estado del Controlador", ["Bueno", "Regular", "Requiere cambio"])
+    with c9: estado_umbilical = st.selectbox("Estado del Cable Umbilical", ["Bueno", "Regular", "Requiere cambio"])
+    obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas, mantenimientos pendientes o estado de componentes específicos...")
+
+    st.markdown("---")
+    st.header("3. Equipamiento de Terreno")
+    st.write("Seleccione los elementos presentes en terreno:")
+    c10, c11, c12, c13, c14 = st.columns(5)
+    with c10: carpa = st.checkbox("Carpa plegable")
+    with c11: caseta = st.checkbox("Caseta rígida")
+    with c12: silla = st.checkbox("Silla plegable")
+    with c13: lona = st.checkbox("Lona")
+    with c14: estado_equipamiento = st.selectbox("Estado del Equipamiento", ["Bueno", "Regular", "Requiere cambio"])
+    obs_equipamiento = st.text_area("Observaciones del Equipamiento", placeholder="Detalle daños en carpas, desgaste de estructuras, faltantes...")
+
+    st.markdown("---")
+    st.header("4. Inventario de Terreno")
+    herramientas_base = {
+        "Cuchillo de maniobra con funda (Bahco)": 1, "Cuchillo de maniobra sin funda (Bahco)": 1,
+        "Araña de recuperación de acero inoxidable": 1, "Juego de llaves Allen": 1,
+        "Pelacables": 1, "Alicate de corte diagonal": 1, "Alicate de punta fina (mangos rojo/azul)": 1,
+        "Alicate para anillos de retención (circlips)": 1, "Alicate universal": 1,
+        "Alicate de punta fina pequeño": 1, "Destornilladores": 6
+    }
+    materiales_base = {
+        "Frasco de vaselina": 1, "Tubos de grasa dieléctrica (Loctite)": 3,
+        "Paquete de hisopos": 1, "Tapones o conectores cilíndricos negros": 3,
+        "Adhesivo industrial B-7000": 1, "Lata de lubricante penetrante (Afloja Todo)": 1,
+        "WD-40": 1, "Limpia contacto": 1, "Tapones para puerto de carga": 2,
+        "Tapón o cubierta cuadrada pequeña": 1, "Protectores de sensor": 3,
+        "Rollo de cinta de empalme (Splicing tape)": 1, "Cartucho de cuchillas de repuesto": 1,
+        "Repuestos de brazo manipulador grabber": 4
+    }
+
+    resultados_inventario = {}
+    st.subheader("Herramientas")
+    col_h1, col_h2 = st.columns(2)
+    items_herr = list(herramientas_base.items())
+    for i, (item, cant_esperada) in enumerate(items_herr):
+        col = col_h1 if i < (len(items_herr) // 2 + len(items_herr) % 2) else col_h2
+        with col:
+            c_check, c_num = st.columns([3, 1])
+            with c_check: presente = st.checkbox(item, value=False, key=f"h_{i}")
+            with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nh_{i}", disabled=not presente, label_visibility="collapsed")
+            resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
+
+    st.subheader("Materiales de Mantención")
+    col_m1, col_m2 = st.columns(2)
+    items_mat = list(materiales_base.items())
+    for i, (item, cant_esperada) in enumerate(items_mat):
+        col = col_m1 if i < (len(items_mat) // 2 + len(items_mat) % 2) else col_m2
+        with col:
+            c_check, c_num = st.columns([3, 1])
+            with c_check: presente = st.checkbox(item, value=False, key=f"m_{i}")
+            with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nm_{i}", disabled=not presente, label_visibility="collapsed")
+            resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
+
+    st.markdown("---")
+    st.header("5. Registro Operativo")
+    faena_et = st.text_area("Faena realizada durante el turno de 14 días", height=80)
+    alertas_et = st.text_area("Alertas del centro", placeholder="Ej: Rotura en jaula 104...", height=80)
+    pendientes_et = st.text_area("Tareas pendientes o a realizar", height=80)
+    obs_generales_et = st.text_area("Observaciones Generales", height=80)
+
+    st.markdown("---")
+    st.header("6. Evidencia Fotográfica y Firmas")
+    imagenes_cargadas = st.file_uploader("Cargar imágenes de equipos/terreno (Opcional)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    
+    st.write("✍️ Firma Piloto ROV Saliente")
+    canvas_piloto = st_canvas(fill_color="rgba(255, 255, 255, 0)", stroke_width=2, stroke_color="#000", background_color="#FFF", height=120, width=300, drawing_mode="freedraw", key="canvas_et")
+
+    correo_destino_et = st.text_input("Correo electrónico del destinatario (Jefatura o Piloto Entrante)", placeholder="jefatura@blumar.com")
+
+    if st.button("Guardar, Generar PDF y Enviar", type="primary", use_container_width=True):
+        if not piloto_saliente or not piloto_entrante:
+            st.error("Error: Los campos 'Piloto Entrante' y 'Piloto Saliente' son obligatorios.")
+        elif not correo_destino_et:
+            st.error("Error: Ingrese el correo del destinatario.")
+        else:
+            barra_et = st.progress(0, text="⚙️ Compilando Entrega de Turno...")
+            
+            lista_equipamiento = [item for item, selected in zip(["Carpa plegable", "Caseta rígida", "Silla plegable", "Lona"], [carpa, caseta, silla, lona]) if selected]
+            txt_equipamiento = ", ".join(lista_equipamiento) if lista_equipamiento else "Ninguno"
+
+            herr_presentes = [f"{item} ({datos['cantidad']})" for item, datos in resultados_inventario.items() if item in herramientas_base and datos['presente'] and datos['cantidad'] > 0]
+            herr_faltantes = [item for item, datos in resultados_inventario.items() if item in herramientas_base and (not datos['presente'] or datos['cantidad'] == 0)]
+            mat_presentes = [f"{item} ({datos['cantidad']})" for item, datos in resultados_inventario.items() if item in materiales_base and datos['presente'] and datos['cantidad'] > 0]
+            mat_faltantes = [item for item, datos in resultados_inventario.items() if item in materiales_base and (not datos['presente'] or datos['cantidad'] == 0)]
+
+            datos_pdf = {
+                "1. Información General": {
+                    "Piloto_Entrante": piloto_entrante, "Piloto_Saliente": piloto_saliente,
+                    "Fecha": str(fecha_et), "Centro": centro_et, "Área": area_et
+                },
+                "2. Estado del Equipo": {
+                    "Modelo_ROV": equipo_rov, "Estado_ROV": estado_equipo,
+                    "Estado_Controlador": estado_controlador, "Cable_Umbilical": estado_umbilical,
+                    "Observaciones_Equipos": obs_equipos
+                },
+                "3. Terreno": {
+                    "Equipamiento_Presente": txt_equipamiento, "Estado_del_Equipamiento": estado_equipamiento,
+                    "Observaciones_Equipamiento": obs_equipamiento
+                },
+                "4. Herramientas": {
+                    "Herramientas_Presentes": herr_presentes if herr_presentes else ["Ninguna"],
+                    "Herramientas_Faltantes": herr_faltantes if herr_faltantes else ["Ninguna"]
+                },
+                "5. Materiales de Mantención": {
+                    "Materiales_Presentes": mat_presentes if mat_presentes else ["Ninguno"],
+                    "Materiales_Faltantes": mat_faltantes if mat_faltantes else ["Ninguno"]
+                },
+                "6. Operativa de Turno (14 días)": {
+                    "Faena_Realizada": faena_et, "Alertas_del_Centro": alertas_et,
+                    "Tareas_Pendientes": pendientes_et, "Observaciones_Generales": obs_generales_et
+                }
+            }
+            
+            firma_path_et = f"firma_et_{uuid.uuid4().hex[:6]}.png"
+            if canvas_piloto.image_data is not None:
+                Image.fromarray(canvas_piloto.image_data.astype(np.uint8)).convert("RGB").save(firma_path_et)
+
+            nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
+            
+            try:
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, "logo.png", nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                
+                barra_et.progress(50, text="☁️ Subiendo a la Nube...")
+                url_pdf_et_nube = ""
+                try:
+                    with open(archivo_pdf_et, "rb") as f:
+                        supabase.storage.from_("documentos").upload(path=archivo_pdf_et, file=f, file_options={"content-type": "application/pdf"})
+                    url_pdf_et_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_et)
+                except Exception as upload_err:
+                    st.error(f"Aviso de subida nube: {upload_err}")
+
+                datos_historial_et = {
+                    "fecha": str(fecha_et), "usuario": piloto_saliente, "centro": centro_et, 
+                    "area": area_et, "tipo_reporte": "Entrega de Turno", "url_documento": url_pdf_et_nube
+                }
+                try:
+                    supabase.table('entrega_history').insert(datos_historial_et).execute()
+                except Exception:
+                    st.session_state.local_entrega_history.append(datos_historial_et)
+
+                barra_et.progress(80, text="📧 Transmitiendo Correo...")
+                remitente = st.secrets["EMAIL_USER"]
+                password = st.secrets["EMAIL_PASS"]
+                msg = MIMEMultipart(); msg['From'] = remitente; msg['To'] = correo_destino_et; msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
+                msg.attach(MIMEText(f"Se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
+                with open(archivo_pdf_et, "rb") as attachment:
+                    part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
+                encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
+                server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(remitente, password); server.send_message(msg); server.quit()
+
+                if os.path.exists(firma_path_et): os.remove(firma_path_et)
+                
+                barra_et.progress(100, text="✅ Turno Entregado.")
+                time.sleep(0.5); barra_et.empty()
+                st.success(f"Reporte de Entrega de Turno enviado exitosamente a {correo_destino_et}.")
+                with open(archivo_pdf_et, "rb") as f:
+                    st.download_button("📥 Descargar Copia Local PDF", data=f.read(), file_name=archivo_pdf_et, mime="application/pdf")
+            except Exception as e:
+                barra_et.empty(); st.error(f"Error Técnico: {e}")
+
+# ---------------------------------------------------------
+# MÓDULO 6: HISTORIAL Y BÚSQUEDA (MEJORADO PARA TRES TABLAS)
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'modulo_busqueda':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.title("Historial de Documentación y Descargas")
     st.divider()
     
-    rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"])
+    col_rol, col_modulo = st.columns(2)
+    with col_rol:
+        rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"])
+    with col_modulo:
+        modulo_consulta = st.selectbox("Módulo a Consultar", ["HPT", "Reportes Diarios", "Entregas de Turno"])
     
-    registros_hpt = []
+    tabla_map = {"HPT": "hpt_history", "Reportes Diarios": "reportes_history", "Entregas de Turno": "entrega_history"}
+    tabla_actual = tabla_map[modulo_consulta]
+    registros_hist = []
     
     if rol_busqueda == "Administrador":
         if not st.session_state.admin_acceso_historial:
             clave_ingresada = st.text_input("Ingrese Pin de Seguridad Administrador", type="password")
             if st.button("Ingresar"):
                 if clave_ingresada == CLAVE_ADMIN:
-                    st.session_state.admin_acceso_historial = True
-                    st.rerun()
-                else:
-                    st.error("Código de seguridad incorrecto.")
+                    st.session_state.admin_acceso_historial = True; st.rerun()
+                else: st.error("Código de seguridad incorrecto.")
         else:
             st.success("Acceso Gerencial Desbloqueado.")
-            if st.button("Cerrar Vista Administrador"):
-                st.session_state.admin_acceso_historial = False
-                st.rerun()
+            if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_historial = False; st.rerun()
                 
             try:
-                res = supabase.table('hpt_history').select('*').order('id', desc=True).execute()
-                registros_hpt = res.data
-            except:
-                registros_hpt = st.session_state.local_hpt_history
+                res = supabase.table(tabla_actual).select('*').order('id', desc=True).execute()
+                registros_hist = res.data
+            except Exception:
+                if modulo_consulta == "HPT": registros_hist = st.session_state.local_hpt_history
+                elif modulo_consulta == "Reportes Diarios": registros_hist = st.session_state.local_reportes_history
+                else: registros_hist = st.session_state.local_entrega_history
     else:
         user_actual = st.session_state.current_user
         st.info(f"Mostrando únicamente registros del Piloto: **{user_actual}**")
         try:
-            res = supabase.table('hpt_history').select('*').filter('usuario', 'eq', user_actual).order('id', desc=True).execute()
-            registros_hpt = res.data
-        except:
-            registros_hpt = [r for r in st.session_state.local_hpt_history if r['usuario'] == user_actual]
+            res = supabase.table(tabla_actual).select('*').filter('usuario', 'eq', user_actual).order('id', desc=True).execute()
+            registros_hist = res.data
+        except Exception:
+            if modulo_consulta == "HPT": registros_hist = [r for r in st.session_state.local_hpt_history if r['usuario'] == user_actual]
+            elif modulo_consulta == "Reportes Diarios": registros_hist = [r for r in st.session_state.local_reportes_history if r['usuario'] == user_actual]
+            else: registros_hist = [r for r in st.session_state.local_entrega_history if r['usuario'] == user_actual]
 
     if (rol_busqueda == "Usuario Común") or (rol_busqueda == "Administrador" and st.session_state.admin_acceso_historial):
-        if registros_hpt:
-            df = pd.DataFrame(registros_hpt)
-            
-            # Limpieza de url_documento para evitar fallas visuales con string "none" o cadenas vacias
+        if registros_hist:
+            df = pd.DataFrame(registros_hist)
             if 'url_documento' in df.columns:
                 df['url_documento'] = df['url_documento'].apply(lambda x: x if pd.notnull(x) and str(x).strip() != "" else None)
                 
-                st.dataframe(
-                    df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']],
-                    column_config={
-                        "url_documento": st.column_config.LinkColumn("Enlace PDF", display_text="📥 Descargar PDF")
-                    },
-                    use_container_width=True
-                )
+                # Adaptamos las columnas a mostrar según la tabla
+                if modulo_consulta == "HPT": cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']
+                elif modulo_consulta == "Reportes Diarios": cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'jaula', 'tarea', 'url_documento']
+                else: cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'tipo_reporte', 'url_documento']
+                
+                # Evitar error si falta alguna columna en datos locales
+                cols_mostrar = [c for c in cols_mostrar if c in df.columns]
+                
+                st.dataframe(df[cols_mostrar], column_config={"url_documento": st.column_config.LinkColumn("Enlace PDF", display_text="📥 Descargar PDF")}, use_container_width=True)
             else:
-                st.dataframe(df[['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto']], use_container_width=True)
+                st.dataframe(df, use_container_width=True)
         else:
-            st.info("No se registran datos en el historial solicitado.")
+            st.info(f"No se registran datos en el historial de {modulo_consulta}.")
 
 # ---------------------------------------------------------
-# MÓDULO 7: PANEL DE GRÁFICOS GERENCIALES (BI)
+# MÓDULO 7: PANEL DE GRÁFICOS GERENCIALES (BI MEJORADO)
 # ---------------------------------------------------------
 elif st.session_state.current_page == 'panel_graficos':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
@@ -663,16 +999,11 @@ elif st.session_state.current_page == 'panel_graficos':
     if not st.session_state.admin_acceso_graficos:
         clave_dash = st.text_input("Autenticación Gerencial (Pin)", type="password", key="dash_pin")
         if st.button("Ingresar"):
-            if clave_dash == CLAVE_ADMIN:
-                st.session_state.admin_acceso_graficos = True
-                st.rerun()
-            else:
-                st.error("Código inválido.")
+            if clave_dash == CLAVE_ADMIN: st.session_state.admin_acceso_graficos = True; st.rerun()
+            else: st.error("Código inválido.")
     else:
         st.success("Acceso Gerencial Desbloqueado.")
-        if st.button("Cerrar Vista Administrador"):
-            st.session_state.admin_acceso_graficos = False
-            st.rerun()
+        if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_graficos = False; st.rerun()
 
         try:
             res_hpt = supabase.table('hpt_history').select('*').execute()
@@ -681,16 +1012,31 @@ elif st.session_state.current_page == 'panel_graficos':
             df_hpt = pd.DataFrame(st.session_state.local_hpt_history)
             
         if not df_hpt.empty:
-            st.subheader("📊 Frecuencia de Operaciones por Centro de Cultivo")
-            centro_counts = df_hpt['centro'].value_counts()
-            st.bar_chart(centro_counts)
+            c_graf1, c_graf2 = st.columns(2)
             
-            st.subheader("🚢 Estado y Restricciones de Puertos por Área")
-            puerto_counts = df_hpt.groupby(['area', 'condicion_puerto']).size().unstack(fill_value=0)
-            st.bar_chart(puerto_counts)
-            
-            st.subheader("💼 Distribución Operativa por Piloto ROV")
-            piloto_counts = df_hpt['usuario'].value_counts()
-            st.bar_chart(piloto_counts)
+            with c_graf1:
+                st.subheader("📊 Operaciones por Centro")
+                centro_counts = df_hpt['centro'].value_counts()
+                st.bar_chart(centro_counts)
+                
+                st.subheader("⚠️ Puertos Cerrados por Área")
+                df_cerrados = df_hpt[df_hpt['condicion_puerto'] != 'Abierto']
+                if not df_cerrados.empty:
+                    puertos_cerrados = df_cerrados['area'].value_counts()
+                    st.bar_chart(puertos_cerrados, color="#ff4b4b")
+                else:
+                    st.info("Fantástico: Ningún registro de puerto cerrado.")
+                    
+            with c_graf2:
+                st.subheader("🛠️ Top Faenas más Realizadas")
+                if 'faena' in df_hpt.columns:
+                    faena_counts = df_hpt['faena'].value_counts()
+                    st.bar_chart(faena_counts, color="#00ff99")
+                else:
+                    st.info("Sin registros de tipología de faenas.")
+                    
+                st.subheader("💼 Distribución por Piloto ROV")
+                piloto_counts = df_hpt['usuario'].value_counts()
+                st.bar_chart(piloto_counts, color="#f5b841")
         else:
             st.info("No existen suficientes registros en Supabase para estructurar gráficos de control estadístico.")
