@@ -593,7 +593,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     }
                     try:
                         supabase.table('hpt_history').insert(row_data).execute()
-                    except Exception:
+                    except Exception as db_err:
+                        st.error(f"⚠️ Error al guardar en base de datos HPT: {db_err}")
                         st.session_state.local_hpt_history.append(row_data)
 
                     barra_carga.progress(60, text="📧 Enviando PDF...")
@@ -675,7 +676,7 @@ elif st.session_state.current_page == 'reporte_diario':
                 # CORRECCIÓN DE TYPO pdf. -> pdf_rd.
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, centro_rd, border=1)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(60, 6, area_rd, border=1, ln=True)
-                pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(155, 6, condicion_puerto_rd, border=1, ln=True)
+                pdf_rd.set_font("Arial", "B", 8); pdf.cell(35, 6, "Condicion Puerto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, condicion_puerto_rd, border=1, ln=True)
 
                 pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
                 pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(40, 6, "Estructura Intervenida:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(150, 6, jaula_rd, border=1, ln=True)
@@ -701,7 +702,8 @@ elif st.session_state.current_page == 'reporte_diario':
                 }
                 try:
                     supabase.table('reportes_history').insert(datos_rd).execute()
-                except:
+                except Exception as db_err:
+                    st.error(f"⚠️ Error al guardar en base de datos Reporte Diario: {db_err}")
                     st.session_state.local_reportes_history.append(datos_rd)
 
                 barra_rd.progress(60, text="📧 Enviando PDF...")
@@ -898,7 +900,8 @@ elif st.session_state.current_page == 'entrega_turno':
                 }
                 try:
                     supabase.table('entrega_history').insert(datos_historial_et).execute()
-                except Exception:
+                except Exception as db_err:
+                    st.error(f"⚠️ Error al guardar en base de datos Entrega de Turno: {db_err}")
                     st.session_state.local_entrega_history.append(datos_historial_et)
 
                 barra_et.progress(80, text="📧 Transmitiendo Correo...")
