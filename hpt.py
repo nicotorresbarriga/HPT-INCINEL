@@ -232,6 +232,7 @@ if not st.session_state.logged_in:
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
+            # Imagen ampliada a tamaño contenedor de la columna
             st.image("logo.png", use_container_width=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
@@ -761,7 +762,7 @@ elif st.session_state.current_page == 'entrega_turno':
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
 
     st.markdown("---"); st.header("5. Registro Operativo")
-    faena_et = st.text_area("Faena realizada durante el turno de 14 días", height=80)
+    faena_et = text_area("Faena realizada durante el turno de 14 días", height=80)
     alertas_et = st.text_area("Alertas del centro", placeholder="Ej: Rotura en jaula 104...", height=80)
     pendientes_et = st.text_area("Tareas pendientes o a realizar", height=80)
     obs_generales_et = st.text_area("Observaciones Generales", height=80)
@@ -873,15 +874,17 @@ elif st.session_state.current_page == 'modulo_busqueda':
             if 'url_documento' in df.columns:
                 df['url_documento'] = df['url_documento'].apply(lambda x: x if pd.notnull(x) and str(x).strip() != "" else None)
             
+            # PREPARAR COLUMNAS DE FECHA ANTES DE COPIAR EL DATAFRAME
+            if 'fecha' in df.columns:
+                df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
+                df['Año'] = df['fecha_dt'].dt.year.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
+                df['Mes'] = df['fecha_dt'].dt.month.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
+            else: df['Año'] = "Desc."; df['Mes'] = "Desc."
+
             # FILTROS AVANZADOS (Solo para Administrador)
             df_filtro = df.copy()
             if rol_busqueda == "Administrador":
                 st.markdown("### 🔍 Filtros de Búsqueda Avanzada")
-                if 'fecha' in df.columns:
-                    df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
-                    df['Año'] = df['fecha_dt'].dt.year.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
-                    df['Mes'] = df['fecha_dt'].dt.month.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
-                else: df['Año'] = "Desc."; df['Mes'] = "Desc."
 
                 c_f1, c_f2, c_f3, c_f4, c_f5 = st.columns(5)
                 with c_f1: filtro_op = st.selectbox("Operador", ["Todos"] + list(df['usuario'].dropna().unique())) if 'usuario' in df.columns else "Todos"
