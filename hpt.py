@@ -232,7 +232,6 @@ if not st.session_state.logged_in:
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            # Imagen ampliada a tamaño contenedor de la columna
             st.image("logo.png", use_container_width=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
@@ -340,7 +339,7 @@ elif st.session_state.current_page == 'hpt_menu':
     st.divider()
     if st.button("➕ CREAR NUEVA HPT", use_container_width=True): 
         set_step(1)
-        st.session_state.hpt_pdf_generado = None # Reset de descarga anterior
+        st.session_state.hpt_pdf_generado = None 
         set_page('hpt_nuevo')
         st.rerun()
 
@@ -868,7 +867,7 @@ elif st.session_state.current_page == 'modulo_busqueda':
             elif modulo_consulta == "Reportes Diarios": registros_hist = [r for r in st.session_state.local_reportes_history if r['usuario'] == user_actual]
             else: registros_hist = [r for r in st.session_state.local_entrega_history if r['usuario'] == user_actual]
 
-    if (rol_busqueda == "Usuario Común") or (rol_busqueda == "Administrador" and st.session_state.admin_acceso_historial):
+    if (rol_busqueda == "Usuario Común") or (rol_busqueda == "Administrador" and (st.session_state.admin_acceso_historial or st.session_state.current_user == 'admin')):
         if registros_hist:
             df = pd.DataFrame(registros_hist)
             if 'url_documento' in df.columns:
