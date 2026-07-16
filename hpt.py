@@ -327,7 +327,12 @@ elif st.session_state.current_page == 'main_menu':
         if st.button("🚢 REPORTE DIARIO", use_container_width=True): set_page('reporte_diario'); st.rerun()
         if st.button("📊 HISTORIAL / AUDITORÍA", use_container_width=True): set_page('modulo_busqueda'); st.rerun()
         if st.button("🔒 Cerrar Sesión", use_container_width=True):
-            st.session_state.logged_in = False; st.session_state.current_user = ""; set_page('login'); st.rerun()
+            st.session_state.logged_in = False
+            st.session_state.current_user = ""
+            st.session_state.admin_acceso_historial = False
+            st.session_state.admin_acceso_graficos = False
+            set_page('login')
+            st.rerun()
 
 elif st.session_state.current_page == 'hpt_menu':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
@@ -825,7 +830,9 @@ elif st.session_state.current_page == 'modulo_busqueda':
     st.divider()
     
     col_rol, col_modulo = st.columns(2)
-    with col_rol: rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"])
+    with col_rol: 
+        idx_rol = 1 if st.session_state.current_user == 'admin' else 0
+        rol_busqueda = st.radio("Seleccione Perfil de Búsqueda", ["Usuario Común", "Administrador"], index=idx_rol)
     with col_modulo: modulo_consulta = st.selectbox("Módulo a Consultar", ["HPT", "Reportes Diarios", "Entregas de Turno"])
     
     tabla_map = {"HPT": "hpt_history", "Reportes Diarios": "reportes_history", "Entregas de Turno": "entrega_history"}
@@ -833,14 +840,16 @@ elif st.session_state.current_page == 'modulo_busqueda':
     registros_hist = []
     
     if rol_busqueda == "Administrador":
-        if not st.session_state.admin_acceso_historial:
+        admin_autorizado = st.session_state.admin_acceso_historial or st.session_state.current_user == 'admin'
+        if not admin_autorizado:
             clave_ingresada = st.text_input("Ingrese Pin de Seguridad Administrador", type="password")
             if st.button("Ingresar"):
                 if clave_ingresada == CLAVE_ADMIN: st.session_state.admin_acceso_historial = True; st.rerun()
                 else: st.error("Código de seguridad incorrecto.")
         else:
             st.success("Acceso Gerencial Desbloqueado.")
-            if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_historial = False; st.rerun()
+            if st.session_state.current_user != 'admin':
+                if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_historial = False; st.rerun()
             try:
                 res = supabase.table(tabla_actual).select('*').order('id', desc=True).execute()
                 registros_hist = res.data
@@ -935,14 +944,16 @@ elif st.session_state.current_page == 'panel_graficos':
     st.title("📈 Métricas e Inteligencia de Negocio")
     st.divider()
     
-    if not st.session_state.admin_acceso_graficos:
+    admin_autorizado_graf = st.session_state.admin_acceso_graficos or st.session_state.current_user == 'admin'
+    if not admin_autorizado_graf:
         clave_dash = st.text_input("Autenticación Gerencial (Pin)", type="password", key="dash_pin")
         if st.button("Ingresar"):
             if clave_dash == CLAVE_ADMIN: st.session_state.admin_acceso_graficos = True; st.rerun()
             else: st.error("Código inválido.")
     else:
         st.success("Acceso Gerencial Desbloqueado.")
-        if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_graficos = False; st.rerun()
+        if st.session_state.current_user != 'admin':
+            if st.button("Cerrar Vista Administrador"): st.session_state.admin_acceso_graficos = False; st.rerun()
 
         try:
             res_hpt = supabase.table('hpt_history').select('*').execute()
