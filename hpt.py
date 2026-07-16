@@ -106,10 +106,11 @@ try:
     supabase = init_connection()
     res_usuarios = supabase.table('usuarios').select('*').execute()
     USUARIOS = {row['usuario']: row['contrasena'] for row in res_usuarios.data}
+    USUARIOS['admin'] = 'admin' # Se agrega administrador obligatoriamente
     res_centros = supabase.table('centros').select('*').execute()
     CENTROS_AREAS = {row['nombre']: row['area'] for row in res_centros.data}
 except Exception as e:
-    USUARIOS = {"Ntorres": "17909926", "Imuñoz": "12345678", "Pasencio": "98765432"}
+    USUARIOS = {"Ntorres": "17909926", "Imuñoz": "12345678", "Pasencio": "98765432", "admin": "admin"}
     CENTROS_AREAS = {
         "Centro Ninualac": "Area Sur", "Centro Dring 3": "Area Sur", "Centro Punta cola": "Area Sur",
         "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
@@ -227,14 +228,12 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     return nombre_archivo
 
 if not st.session_state.logged_in:
-    # Interfaz reducida para el Login
     col1, col2, col3 = st.columns([3, 2, 3])
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            c_img1, c_img2, c_img3 = st.columns([1, 2, 1])
-            with c_img2:
-                st.image("logo.png", use_container_width=True)
+            # Imagen ampliada a tamaño contenedor de la columna
+            st.image("logo.png", use_container_width=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
@@ -255,8 +254,70 @@ if not st.session_state.logged_in:
 elif st.session_state.current_page == 'main_menu':
     st.title("Sistema de Gestión Operativa")
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
-    st.divider()
     
+    # === PANEL GERENCIAL / INDICADORES ADMINISTRADOR ===
+    if st.session_state.current_user == 'admin':
+        st.markdown("---")
+        st.subheader("📊 Panel de Control en Tiempo Real")
+        
+        try:
+            res_hpt = supabase.table('hpt_history').select('*').execute()
+            res_rd = supabase.table('reportes_history').select('*').execute()
+            df_hpt = pd.DataFrame(res_hpt.data)
+            df_rd = pd.DataFrame(res_rd.data)
+        except:
+            df_hpt = pd.DataFrame(st.session_state.local_hpt_history)
+            df_rd = pd.DataFrame(st.session_state.local_reportes_history)
+        
+        total_hpt = len(df_hpt) if not df_hpt.empty else 0
+        total_rd = len(df_rd) if not df_rd.empty else 0
+        total_reportes = total_hpt + total_rd
+        
+        hoy_str = str(datetime.date.today())
+        
+        hpt_hoy = df_hpt[df_hpt['fecha'] == hoy_str] if not df_hpt.empty and 'fecha' in df_hpt.columns else pd.DataFrame()
+        rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
+        
+        reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
+        pilotos_activos = ["Ntorres", "Imuñoz", "Pasencio"]
+        
+        pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
+        pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
+        
+        pendientes_hpt = [p for p in pilotos_activos if p not in pilotos_con_hpt]
+        pendientes_rd = [p for p in pilotos_activos if p not in pilotos_con_rd]
+        
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Reportes Totales (Históricos)", total_reportes)
+        m2.metric("Reportes Enviados Hoy", reportes_hoy_total)
+        m3.metric("Pilotos Operativos Plataforma", len(pilotos_activos))
+        
+        st.markdown("**Estado de Reportabilidad del Día:**")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            if pendientes_hpt:
+                st.warning(f"⚠️ **HPT Pendientes:** {', '.join(pendientes_hpt)}")
+            else:
+                st.success("✅ Todas las HPT del día enviadas.")
+        with col_p2:
+            if pendientes_rd:
+                st.warning(f"⚠️ **Reportes Diarios Pendientes:** {', '.join(pendientes_rd)}")
+            else:
+                st.success("✅ Todos los Reportes Diarios enviados.")
+                
+        # Alertas de horario (Ajustado a hora de Chile aprox UTC-4)
+        hora_chile = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).time()
+        limite_hpt = datetime.time(9, 30)
+        limite_rd = datetime.time(20, 0)
+        
+        if hora_chile > limite_hpt and pendientes_hpt:
+            st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 09:30 AM y existen HPT pendientes por envío.")
+        
+        if hora_chile > limite_rd and pendientes_rd:
+            st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
+    # ===================================================
+            
+    st.divider()
     c1, c2 = st.columns(2)
     with c1:
         if st.button("⚓ MÓDULO HPT", use_container_width=True): set_page('hpt_menu'); st.rerun()
@@ -316,7 +377,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
             
         opciones_faena = ["Inspeccion Red Lobera", "Inspeccion Red pecera", "Inspeccion Tensores", "Recuperacion inorganico", "Apoyo Centro de cultivo", "Extraccion de mortalidad", "Mantencion equipos", "Sin faena"]
         
-        # Logica de salto de faena si el puerto esta cerrado total
         if condicion_puerto == "Cerrado total":
             st.warning("⚠️ **Puerto Cerrado Total:** Se saltarán los pasos de EPP y ERC. La faena se registra como 'Sin faena'.")
             faena = "Sin faena"
@@ -327,7 +387,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
         if st.button("SIGUIENTE ➡️", use_container_width=True):
             st.session_state.hpt_data.update({"empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio, "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo, "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena})
             if condicion_puerto == "Cerrado total":
-                set_step(4) # Salto directo a validacion final
+                set_step(4) 
             else:
                 set_step(2)
             st.rerun()
@@ -407,7 +467,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back4", use_container_width=True): 
-                # Lógica de retorno correcta si viene de salto de puerto cerrado
                 if st.session_state.hpt_data.get("condicion_puerto") == "Cerrado total":
                     set_step(1)
                 else:
@@ -438,7 +497,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Prevencionista 2:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, CORREOS_PREVENCION[1], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Correo Centro:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('correo', '')[:80], border=1, ln=True)
                     
-                    # Corrección: Uso de multi_cell para Faena y Detalles para evitar cortes de texto largo
                     pdf.set_font("Arial", "B", 8)
                     pdf.cell(190, 6, "Faena Primaria y Detalles Especificos:", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "", 8)
@@ -477,7 +535,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}_{identificador_unico}.pdf"
                     pdf.output(archivo_pdf)
                     
-                    st.session_state.hpt_pdf_generado = archivo_pdf # Guardar en cache para boton de descarga constante
+                    st.session_state.hpt_pdf_generado = archivo_pdf
 
                     url_pdf_nube = ""
                     try:
@@ -514,7 +572,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 except Exception as e:
                     barra_carga.empty(); st.error(f"Falla: {e}")
         
-        # Botones estables tras generación (Sin redirección automática)
         if st.session_state.hpt_pdf_generado and os.path.exists(st.session_state.hpt_pdf_generado):
             st.success("✅ HPT Generada, Guardada y Enviada con éxito.")
             
@@ -818,16 +875,23 @@ elif st.session_state.current_page == 'modulo_busqueda':
                     df['Mes'] = df['fecha_dt'].dt.month.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
                 else: df['Año'] = "Desc."; df['Mes'] = "Desc."
 
-                c_f1, c_f2, c_f3, c_f4 = st.columns(4)
+                c_f1, c_f2, c_f3, c_f4, c_f5 = st.columns(5)
                 with c_f1: filtro_op = st.selectbox("Operador", ["Todos"] + list(df['usuario'].dropna().unique())) if 'usuario' in df.columns else "Todos"
                 with c_f2: filtro_cen = st.selectbox("Centro", ["Todos"] + list(df['centro'].dropna().unique())) if 'centro' in df.columns else "Todos"
                 with c_f3: filtro_anio = st.selectbox("Año", ["Todos"] + list(df['Año'].unique()))
                 with c_f4: filtro_mes = st.selectbox("Mes", ["Todos"] + list(df['Mes'].unique()))
+                with c_f5:
+                    if 'condicion_puerto' in df.columns:
+                        filtro_puerto = st.selectbox("Condición Puerto", ["Todos", "Solo Puerto Cerrado Total"])
+                    else:
+                        filtro_puerto = "Todos"
 
                 if filtro_op != "Todos": df_filtro = df_filtro[df_filtro['usuario'] == filtro_op]
                 if filtro_cen != "Todos": df_filtro = df_filtro[df_filtro['centro'] == filtro_cen]
                 if filtro_anio != "Todos": df_filtro = df_filtro[df_filtro['Año'] == filtro_anio]
                 if filtro_mes != "Todos": df_filtro = df_filtro[df_filtro['Mes'] == filtro_mes]
+                if filtro_puerto == "Solo Puerto Cerrado Total" and 'condicion_puerto' in df_filtro.columns:
+                    df_filtro = df_filtro[df_filtro['condicion_puerto'] == 'Cerrado total']
 
             # DEFINIR COLUMNAS VISIBLES SEGÚN MÓDULO
             if modulo_consulta == "HPT": cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']
