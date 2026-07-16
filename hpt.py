@@ -543,11 +543,16 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     st.session_state.hpt_pdf_generado = archivo_pdf
 
                     url_pdf_nube = ""
-                    try:
-                        with open(archivo_pdf, "rb") as f:
-                            supabase.storage.from_("documentos").upload(path=archivo_pdf, file=f, file_options={"content-type": "application/pdf"})
-                        url_pdf_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf)
-                    except Exception as upload_error: st.error(f"⚠️ Error al subir PDF: {upload_error}")
+                    for intento in range(3):
+                        try:
+                            time.sleep(0.5) # Pausa para liberar el archivo en el sistema operativo
+                            with open(archivo_pdf, "rb") as f:
+                                supabase.storage.from_("documentos").upload(path=archivo_pdf, file=f, file_options={"content-type": "application/pdf"})
+                            url_pdf_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf)
+                            break # Si tiene éxito, sale del bucle de reintentos
+                        except Exception as upload_error:
+                            if intento == 2: st.error(f"⚠️ Error al subir PDF: {upload_error}")
+                            time.sleep(1) # Esperar un segundo antes del próximo intento
 
                     row_data = {
                         "fecha": str(data.get('fecha')), "usuario": st.session_state.current_user,
@@ -667,11 +672,16 @@ elif st.session_state.current_page == 'reporte_diario':
             st.session_state.rd_pdf_generado = archivo_pdf_rd
 
             url_pdf_rd_nube = ""
-            try:
-                with open(archivo_pdf_rd, "rb") as f:
-                    supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
-                url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
-            except Exception as upload_error_rd: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
+            for intento in range(3):
+                try:
+                    time.sleep(0.5) # Pausa para liberar recursos de red y disco
+                    with open(archivo_pdf_rd, "rb") as f:
+                        supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
+                    url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
+                    break # Éxito, salir del bucle
+                except Exception as upload_error_rd:
+                    if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
+                    time.sleep(1)
 
             datos_rd = {
                 "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
@@ -762,7 +772,7 @@ elif st.session_state.current_page == 'entrega_turno':
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
 
     st.markdown("---"); st.header("5. Registro Operativo")
-    faena_et = text_area("Faena realizada durante el turno de 14 días", height=80)
+    faena_et = st.text_area("Faena realizada durante el turno de 14 días", height=80)
     alertas_et = st.text_area("Alertas del centro", placeholder="Ej: Rotura en jaula 104...", height=80)
     pendientes_et = st.text_area("Tareas pendientes o a realizar", height=80)
     obs_generales_et = st.text_area("Observaciones Generales", height=80)
@@ -800,10 +810,15 @@ elif st.session_state.current_page == 'entrega_turno':
                 archivo_pdf_et = generar_pdf_entrega(datos_pdf, "logo.png", nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
-                try:
-                    with open(archivo_pdf_et, "rb") as f: supabase.storage.from_("documentos").upload(path=archivo_pdf_et, file=f, file_options={"content-type": "application/pdf"})
-                    url_pdf_et_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_et)
-                except Exception as upload_err: st.error(f"Aviso de subida nube: {upload_err}")
+                for intento in range(3):
+                    try:
+                        time.sleep(0.5) # Liberar archivo y socket de red
+                        with open(archivo_pdf_et, "rb") as f: supabase.storage.from_("documentos").upload(path=archivo_pdf_et, file=f, file_options={"content-type": "application/pdf"})
+                        url_pdf_et_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_et)
+                        break # Éxito
+                    except Exception as upload_err:
+                        if intento == 2: st.error(f"Aviso de subida nube: {upload_err}")
+                        time.sleep(1)
 
                 datos_historial_et = {"fecha": str(fecha_et), "usuario": piloto_saliente, "centro": centro_et, "area": area_et, "tipo_reporte": "Entrega de Turno", "url_documento": url_pdf_et_nube}
                 try: supabase.table('entrega_history').insert(datos_historial_et).execute()
