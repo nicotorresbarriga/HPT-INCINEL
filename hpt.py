@@ -486,9 +486,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=25)
-                    pdf.set_y(40); pdf.set_font("Arial", "B", 12)
-                    pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(3)
+                    if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=20)
+                    pdf.set_y(32); pdf.set_font("Arial", "B", 12)
+                    pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(2)
                     pdf.set_fill_color(200, 220, 255); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "1. DATOS OPERATIVOS", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('empresa', '')[:35], border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Centro de Cultivo:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('centro', '')[:35], border=1, ln=True)
@@ -531,10 +531,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_duracion, border=1, ln=True)
 
                     pdf.ln(3); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-                    pdf.cell(95, 25, "", border=1); pdf.cell(95, 25, "", border=1, ln=True)
+                    pdf.cell(95, 20, "", border=1); pdf.cell(95, 20, "", border=1, ln=True)
                     id_firmas = uuid.uuid4().hex[:8]; f_serv = f"f_serv_{id_firmas}.jpg"; f_enc = f"f_encargado_{id_firmas}.jpg"
-                    if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-24, w=45)
-                    if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-24, w=45)
+                    if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-19, w=45, h=18)
+                    if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-19, w=45, h=18)
                     pdf.set_font("Arial", "B", 8); pdf.cell(95, 6, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
                     # Pie de página / Marca de Agua
@@ -686,8 +686,8 @@ elif st.session_state.current_page == 'reporte_diario':
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=25)
-            pdf_rd.set_y(40); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(5)
+            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=20)
+            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(3)
             
             pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(fecha_rd), border=1)
@@ -707,10 +707,10 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
             pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-            pdf_rd.cell(95, 25, "", border=1); pdf_rd.cell(95, 25, "", border=1, ln=True)
+            pdf_rd.cell(95, 20, "", border=1); pdf_rd.cell(95, 20, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
-            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-24, w=45)
-            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-24, w=45)
+            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-19, w=45, h=18)
+            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-19, w=45, h=18)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
             # Pie de página / Marca de Agua
