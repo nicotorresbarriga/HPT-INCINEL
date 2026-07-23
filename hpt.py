@@ -4,6 +4,7 @@ import datetime
 import os
 import time
 import smtplib
+import imaplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -478,8 +479,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, w=30)
-                    pdf.set_y(35); pdf.set_font("Arial", "B", 12)
+                    if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=25)
+                    pdf.set_y(40); pdf.set_font("Arial", "B", 12)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(3)
                     pdf.set_fill_color(200, 220, 255); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "1. DATOS OPERATIVOS", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('empresa', '')[:35], border=1)
@@ -569,7 +570,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     msg = MIMEMultipart()
                     msg['From'] = remitente
                     msg['To'] = ", ".join(lista_destinatarios)
-                    msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+                    msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                     msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
                     msg.attach(MIMEText("Se adjunta el reporte HPT.", 'plain'))
                     
@@ -582,6 +583,14 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     server.login(remitente, password)
                     server.send_message(msg)
                     server.quit()
+
+                    try:
+                        imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
+                        imap.login(remitente, password)
+                        imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
+                        imap.logout()
+                    except Exception:
+                        pass
 
                     if os.path.exists(f_serv): os.remove(f_serv)
                     if os.path.exists(f_enc): os.remove(f_enc)
@@ -664,8 +673,8 @@ elif st.session_state.current_page == 'reporte_diario':
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, w=30)
-            pdf_rd.set_y(35); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(5)
+            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=25)
+            pdf_rd.set_y(40); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(5)
             
             pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(fecha_rd), border=1)
@@ -729,7 +738,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg = MIMEMultipart()
             msg['From'] = remitente
             msg['To'] = ", ".join(lista_destinatarios_rd)
-            msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+            msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
             msg.attach(MIMEText("Se adjunta el Reporte Diario.", 'plain'))
             
@@ -742,6 +751,14 @@ elif st.session_state.current_page == 'reporte_diario':
             server.login(remitente, password)
             server.send_message(msg)
             server.quit()
+
+            try:
+                imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
+                imap.login(remitente, password)
+                imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
+                imap.logout()
+            except Exception:
+                pass
             
             if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
             if os.path.exists(f_enc_rd): os.remove(f_enc_rd)
@@ -875,7 +892,7 @@ elif st.session_state.current_page == 'entrega_turno':
                 msg = MIMEMultipart()
                 msg['From'] = remitente
                 msg['To'] = correo_destino_et
-                msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+                msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText(f"Se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
                 
@@ -887,6 +904,15 @@ elif st.session_state.current_page == 'entrega_turno':
                 server.login(remitente, password)
                 server.send_message(msg)
                 server.quit()
+
+                try:
+                    import imaplib
+                    imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
+                    imap.login(remitente, password)
+                    imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
+                    imap.logout()
+                except Exception:
+                    pass
                 
                 if os.path.exists(firma_path_et): os.remove(firma_path_et)
                 
@@ -946,14 +972,12 @@ elif st.session_state.current_page == 'modulo_busqueda':
             if 'url_documento' in df.columns:
                 df['url_documento'] = df['url_documento'].apply(lambda x: x if pd.notnull(x) and str(x).strip() != "" else None)
             
-            # PREPARAR COLUMNAS DE FECHA ANTES DE COPIAR EL DATAFRAME
             if 'fecha' in df.columns:
                 df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
                 df['Año'] = df['fecha_dt'].dt.year.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
                 df['Mes'] = df['fecha_dt'].dt.month.fillna(0).astype(int).astype(str).replace('0', 'Desc.')
             else: df['Año'] = "Desc."; df['Mes'] = "Desc."
 
-            # FILTROS AVANZADOS (Solo para Administrador)
             df_filtro = df.copy()
             if rol_busqueda == "Administrador":
                 st.markdown("### 🔍 Filtros de Búsqueda Avanzada")
@@ -976,7 +1000,6 @@ elif st.session_state.current_page == 'modulo_busqueda':
                 if filtro_puerto == "Solo Puerto Cerrado Total" and 'condicion_puerto' in df_filtro.columns:
                     df_filtro = df_filtro[df_filtro['condicion_puerto'] == 'Cerrado total']
 
-            # DEFINIR COLUMNAS VISIBLES SEGÚN MÓDULO
             if modulo_consulta == "HPT": cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'ponton', 'condicion_puerto', 'url_documento']
             elif modulo_consulta == "Reportes Diarios": cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'jaula', 'tarea', 'url_documento']
             else: cols_mostrar = ['fecha', 'usuario', 'centro', 'area', 'tipo_reporte', 'url_documento']
@@ -984,7 +1007,6 @@ elif st.session_state.current_page == 'modulo_busqueda':
             
             st.dataframe(df_filtro[cols_mostrar], column_config={"url_documento": st.column_config.LinkColumn("Enlace PDF", display_text="📥 Descargar PDF")}, use_container_width=True)
 
-            # EXPORTACIÓN MASIVA (Solo para Administrador)
             if rol_busqueda == "Administrador":
                 st.markdown("### 📦 Exportación Masiva")
                 col_exp1, col_exp2 = st.columns(2)
