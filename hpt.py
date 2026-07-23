@@ -848,7 +848,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg['To'] = ", ".join(lista_destinatarios_rd)
             msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta reporte diario.", 'plain'))
+            msg.attach(MIMEText("Estimados, muy buenas tardes, junto con saludar se adjunta reporte diario de faenas realizadas.", 'plain'))
             
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
