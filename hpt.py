@@ -759,7 +759,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, centro_rd, border=1)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, area_rd, border=1, ln=True)
             
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(35, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(155, 6, condicion_puerto_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(160, 6, condicion_puerto_rd, border=1, ln=True)
 
             pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Estructura Intervenida:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(190, 6, jaula_rd, border=1, ln=True)
