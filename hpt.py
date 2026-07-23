@@ -92,12 +92,19 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
-# TODO LISTO PARA INICIAR PRUEBAS.
-CENTROS_CORREOS = {"Centro Punta Vergara": "centro.puntavergara@blumar.com"}
-CORREOS_PREVENCION = ["franco.vidal@blumar.com", "jonathan.romero@blumar.com"]
-CORREOS_OCULTOS = ["calarcon@incinel.cl", "ealvarez@incinel.cl"]
+# TODO REDIRIGIDO A REPORTESROVINCINEL PARA LA PRUEBA
+CENTROS_CORREOS = {
+    "Centro Punta Vergara": "reportesrovincinel@gmail.com"
+}
 
+CORREOS_PREVENCION = [
+    "reportesrovincinel@gmail.com", 
+    "reportesrovincinel@gmail.com"
+]
 
+CORREOS_OCULTOS = [
+    "reportesrovincinel@gmail.com"
+]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
 RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) for m in (0, 30)] 
@@ -127,7 +134,8 @@ if 'hpt_data' not in st.session_state:
         "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
         "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
         "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
-        "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
+        "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos",
+        "evidencia_puerto": None
     }
 if 'admin_acceso_historial' not in st.session_state: st.session_state.admin_acceso_historial = False
 if 'admin_acceso_graficos' not in st.session_state: st.session_state.admin_acceso_graficos = False
@@ -336,6 +344,14 @@ elif st.session_state.current_page == 'hpt_menu':
     if st.button("➕ CREAR NUEVA HPT", use_container_width=True): 
         set_step(1)
         st.session_state.hpt_pdf_generado = None 
+        # REINICIAMOS LOS DATOS AQUÍ PARA QUE QUEDE EN BLANCO
+        st.session_state.hpt_data = {
+            "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
+            "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
+            "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
+            "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos",
+            "evidencia_puerto": None
+        }
         set_page('hpt_nuevo')
         st.rerun()
 
@@ -363,7 +379,13 @@ elif st.session_state.current_page == 'hpt_nuevo':
             centro = st.selectbox("Centro de Cultivo", opciones_centros, index=idx_centro)
             idx_ht = RANGO_TERMINO.index(st.session_state.hpt_data["hora_termino"]) if st.session_state.hpt_data["hora_termino"] in RANGO_TERMINO else 0
             hora_termino = st.selectbox("Hora de Término", RANGO_TERMINO, index=idx_ht)
+            
             condicion_puerto = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
+            st.link_button("🌐 Revisar SITPORT (Directemar)", "https://sitport.directemar.cl/#/general", use_container_width=True)
+            
+            evidencia_img = None
+            if condicion_puerto in ["Cerrado para naves menores", "Cerrado total"]:
+                evidencia_img = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'])
             
         area_asignada = CENTROS_AREAS.get(centro, "Desconocida")
         correo_asignado = CENTROS_CORREOS.get(centro, "sin_correo@blumar.com")
@@ -385,7 +407,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
             faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
-            st.session_state.hpt_data.update({"empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio, "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo, "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena})
+            img_bytes = evidencia_img.getvalue() if evidencia_img else st.session_state.hpt_data.get("evidencia_puerto")
+            st.session_state.hpt_data.update({"empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio, "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo, "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena, "evidencia_puerto": img_bytes})
             if condicion_puerto == "Cerrado total":
                 set_step(4) 
             else:
@@ -531,6 +554,34 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-17, w=45, h=15)
                     pdf.set_font("Arial", "B", 8); pdf.cell(95, 6, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
+                    # Agregar foto de evidencia de puerto si existe
+                    if data.get('evidencia_puerto'):
+                        pdf.add_page()
+                        pdf.set_font("Arial", "B", 10)
+                        pdf.set_fill_color(200, 220, 255)
+                        pdf.cell(190, 8, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
+                        pdf.ln(5)
+                        
+                        temp_img_path = f"temp_evidencia_{uuid.uuid4().hex[:6]}.jpg"
+                        with open(temp_img_path, "wb") as f:
+                            f.write(data['evidencia_puerto'])
+                            
+                        with Image.open(temp_img_path) as pil_img:
+                            if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
+                                pil_img = pil_img.convert('RGB')
+                                pil_img.save(temp_img_path)
+                            w_px, h_px = pil_img.size
+                            aspect = h_px / w_px
+                            w_mm = 160
+                            h_mm = w_mm * aspect
+                            if h_mm > 180:
+                                h_mm = 180
+                                w_mm = h_mm / aspect
+                                
+                        x_pos = (210 - w_mm) / 2
+                        pdf.image(temp_img_path, x=x_pos, y=pdf.get_y(), w=w_mm, h=h_mm)
+                        os.remove(temp_img_path)
+
                     # Pie de página / Marca de Agua
                     pdf.set_auto_page_break(auto=False)
                     pdf.set_y(-12)
@@ -618,7 +669,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
                     "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
                     "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
-                    "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
+                    "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos",
+                    "evidencia_puerto": None
                 }
                 st.rerun()
                 
@@ -640,16 +692,22 @@ elif st.session_state.current_page == 'reporte_diario':
     col1, col2 = st.columns(2)
     with col1:
         fecha_rd = st.date_input("Fecha", value=datetime.date.today())
-        piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.current_user)
-        condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
-        ponton_rd = st.text_input("Nombre Pontón")
+        piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.get("rd_piloto", st.session_state.current_user), key="rd_piloto")
+        condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"], key="rd_puerto")
+        st.link_button("🌐 Revisar SITPORT (Directemar)", "https://sitport.directemar.cl/#/general", use_container_width=True)
+        
+        evidencia_img_rd = None
+        if condicion_puerto_rd in ["Cerrado para naves menores", "Cerrado total"]:
+            evidencia_img_rd = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'], key="rd_evidencia")
+
+        ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
 
     if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
         st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y envíe para mantener la trazabilidad.")
         with col2:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
             st.text_input("Rango Horario", value="N/A", disabled=True)
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com")
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
         
         jaula_rd = "N/A"
         hora_inicio_rd = "08:00"
@@ -659,12 +717,12 @@ elif st.session_state.current_page == 'reporte_diario':
         st.info(f"📝 **Descripción Automática generada para el PDF:** {tarea_rd}")
     else:
         with col2:
-            jaula_rd = st.text_input("Jaula / Balsa Trabajada")
-            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO)
-            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com")
+            jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
+            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
+            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
             
-        tarea_rd = st.text_area("Descripción de la Tarea Realizada")
+        tarea_rd = st.text_area("Descripción de la Tarea Realizada", key="rd_tarea")
         
     st.subheader("Firmas de Responsabilidad")
     col_f_rd1, col_f_rd2 = st.columns(2)
@@ -708,6 +766,34 @@ elif st.session_state.current_page == 'reporte_diario':
             if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-17, w=45, h=15)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
+            # Agregar foto de evidencia de puerto si existe
+            if evidencia_img_rd:
+                pdf_rd.add_page()
+                pdf_rd.set_font("Arial", "B", 10)
+                pdf_rd.set_fill_color(200, 220, 255)
+                pdf_rd.cell(190, 8, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
+                pdf_rd.ln(5)
+                
+                temp_img_path = f"temp_evidencia_rd_{uuid.uuid4().hex[:6]}.jpg"
+                with open(temp_img_path, "wb") as f:
+                    f.write(evidencia_img_rd.getvalue())
+                    
+                with Image.open(temp_img_path) as pil_img:
+                    if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
+                        pil_img = pil_img.convert('RGB')
+                        pil_img.save(temp_img_path)
+                    w_px, h_px = pil_img.size
+                    aspect = h_px / w_px
+                    w_mm = 160
+                    h_mm = w_mm * aspect
+                    if h_mm > 180:
+                        h_mm = 180
+                        w_mm = h_mm / aspect
+                        
+                x_pos = (210 - w_mm) / 2
+                pdf_rd.image(temp_img_path, x=x_pos, y=pdf_rd.get_y(), w=w_mm, h=h_mm)
+                os.remove(temp_img_path)
+
             # Pie de página / Marca de Agua
             pdf_rd.set_auto_page_break(auto=False)
             pdf_rd.set_y(-12)
@@ -787,6 +873,10 @@ elif st.session_state.current_page == 'reporte_diario':
         st.success("✅ Reporte Diario Generado y Enviado con éxito.")
         if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
             st.session_state.rd_pdf_generado = None
+            # Borramos de la sesión las variables guardadas en los inputs
+            for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia"]:
+                if key in st.session_state:
+                    del st.session_state[key]
             st.rerun()
             
         with open(st.session_state.rd_pdf_generado, "rb") as pdf_file: 
