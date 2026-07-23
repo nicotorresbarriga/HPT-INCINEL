@@ -97,7 +97,7 @@ CENTROS_CORREOS = {"Centro Punta Vergara": "centro.puntavergara@blumar.com"}
 CORREOS_PREVENCION = ["franco.vidal@blumar.com", "jonathan.romero@blumar.com"]
 CORREOS_OCULTOS = ["calarcon@incinel.cl", "ealvarez@incinel.cl"]
 
-¡Haz tu prueba nomás, genera la HPT, firma con el dedo y me avisas cómo te va! 🚢⚓
+
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
 RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) for m in (0, 30)] 
