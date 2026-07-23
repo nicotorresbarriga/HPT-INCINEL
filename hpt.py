@@ -716,7 +716,7 @@ elif st.session_state.current_page == 'reporte_diario':
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
             
         # Spacer invisible para igualar la altura del botón SITPORT de la columna 1
-        st.markdown("<div style='height: 70px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 65px;'></div>", unsafe_allow_html=True)
         correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
 
     # Fuera de las columnas para mantener la simetría visual
