@@ -222,6 +222,13 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 10)
     pdf.cell(190, 5, "_______________________", border=0, ln=1, align='C')
     pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
+
+    # Pie de página / Marca de Agua
+    pdf.set_y(-15)
+    pdf.set_font("Helvetica", 'I', 8)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
+
     pdf.output(nombre_archivo)
     return nombre_archivo
 
@@ -393,7 +400,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
     elif st.session_state.hpt_step == 2:
         st.subheader("Checklist EPP")
-        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son estrictamente obligatorios.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son strictly obligatorios.</p>", unsafe_allow_html=True)
         estado_epp = st.session_state.hpt_data["epp"]
         col1, col2 = st.columns(2)
         with col1:
@@ -530,6 +537,12 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-24, w=45)
                     pdf.set_font("Arial", "B", 8); pdf.cell(95, 6, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
+                    # Pie de página / Marca de Agua
+                    pdf.set_y(-15)
+                    pdf.set_font("Arial", "I", 8)
+                    pdf.set_text_color(128, 128, 128)
+                    pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+
                     identificador_unico = str(uuid.uuid4())[:8]
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}_{identificador_unico}.pdf"
                     pdf.output(archivo_pdf)
@@ -572,7 +585,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     msg['To'] = ", ".join(lista_destinatarios)
                     msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                     msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
-                    msg.attach(MIMEText("Estimados muy buenos dias, junto con saludarlos se adjunta el reporte HPT. Gracias.", 'plain'))
+                    msg.attach(MIMEText("Se adjunta el reporte HPT.", 'plain'))
                     
                     with open(archivo_pdf, "rb") as attachment:
                         part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -700,6 +713,12 @@ elif st.session_state.current_page == 'reporte_diario':
             if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-24, w=45)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
+            # Pie de página / Marca de Agua
+            pdf_rd.set_y(-15)
+            pdf_rd.set_font("Arial", "I", 8)
+            pdf_rd.set_text_color(128, 128, 128)
+            pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+
             identificador_unico_rd = str(uuid.uuid4())[:8]
             archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
             pdf_rd.output(archivo_pdf_rd)
@@ -740,7 +759,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg['To'] = ", ".join(lista_destinatarios_rd)
             msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Estimados muy buenos tardes, junto con saludarlos se adjunta el reporte diario. Gracias.", 'plain'))
+            msg.attach(MIMEText("Se adjunta el Reporte Diario.", 'plain'))
             
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -894,7 +913,7 @@ elif st.session_state.current_page == 'entrega_turno':
                 msg['To'] = correo_destino_et
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
-                msg.attach(MIMEText(f"Estimados, junto con saludar se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
+                msg.attach(MIMEText(f"Se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
                 
                 with open(archivo_pdf_et, "rb") as attachment: part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
