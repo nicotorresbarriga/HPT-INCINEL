@@ -677,6 +677,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
             with open(st.session_state.hpt_pdf_generado, "rb") as pdf_file:
                 st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=st.session_state.hpt_pdf_generado, mime="application/pdf", use_container_width=True)
 
+<!-- ... existing code ... -->
 elif st.session_state.current_page == 'reporte_diario':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.title("Reporte Diario Operativo")
@@ -687,7 +688,8 @@ elif st.session_state.current_page == 'reporte_diario':
     area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida"); correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
     st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
 
-    estado_turno = st.radio("Estado Operativo del Piloto", ["Operativo (Faena Normal)", "Detenido por Salud / Licencia", "Día de Descanso"], horizontal=True)
+    # Se eliminó la opción "Día de Descanso"
+    estado_turno = st.radio("Estado Operativo del Piloto", ["Operativo (Faena Normal)", "Detenido por Salud / Licencia"], horizontal=True)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -695,20 +697,31 @@ elif st.session_state.current_page == 'reporte_diario':
         piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.get("rd_piloto", st.session_state.current_user), key="rd_piloto")
         condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"], key="rd_puerto")
         st.link_button("🌐 Revisar SITPORT (Directemar)", "https://sitport.directemar.cl/#/general", use_container_width=True)
+        ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
         
         evidencia_img_rd = None
         if condicion_puerto_rd in ["Cerrado para naves menores", "Cerrado total"]:
             evidencia_img_rd = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'], key="rd_evidencia")
 
-        ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
+    is_express = (estado_turno != "Operativo (Faena Normal)") or (condicion_puerto_rd == "Cerrado total")
 
-    if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
-        st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y envíe para mantener la trazabilidad.")
-        with col2:
+    with col2:
+        if is_express:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
-            st.text_input("Rango Horario", value="N/A", disabled=True)
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
-        
+            st.text_input("Hora Inicio Rango", value="N/A", disabled=True)
+            st.text_input("Hora Término Rango", value="N/A", disabled=True)
+        else:
+            jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
+            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
+            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
+            
+        # Spacer invisible para igualar la altura del botón SITPORT de la columna 1
+        st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
+        correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
+
+    # Fuera de las columnas para mantener la simetría visual
+    if is_express:
+        st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y envíe para mantener la trazabilidad.")
         jaula_rd = "N/A"
         hora_inicio_rd = "08:00"
         hora_termino_rd = "18:00"
@@ -716,12 +729,6 @@ elif st.session_state.current_page == 'reporte_diario':
         tarea_rd = f"Jornada sin operaciones submarinas. Motivo de inactividad: {motivo}."
         st.info(f"📝 **Descripción Automática generada para el PDF:** {tarea_rd}")
     else:
-        with col2:
-            jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
-            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
-            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
-            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
-            
         tarea_rd = st.text_area("Descripción de la Tarea Realizada", key="rd_tarea")
         
     st.subheader("Firmas de Responsabilidad")
