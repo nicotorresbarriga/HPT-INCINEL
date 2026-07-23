@@ -572,7 +572,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     msg['To'] = ", ".join(lista_destinatarios)
                     msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                     msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
-                    msg.attach(MIMEText("Se adjunta el reporte HPT.", 'plain'))
+                    msg.attach(MIMEText("Estimados muy buenos dias, junto con saludarlos se adjunta el reporte HPT. Gracias.", 'plain'))
                     
                     with open(archivo_pdf, "rb") as attachment:
                         part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -740,7 +740,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg['To'] = ", ".join(lista_destinatarios_rd)
             msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Se adjunta el Reporte Diario.", 'plain'))
+            msg.attach(MIMEText("Estimados muy buenos tardes, junto con saludarlos se adjunta el reporte diario. Gracias.", 'plain'))
             
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -894,7 +894,7 @@ elif st.session_state.current_page == 'entrega_turno':
                 msg['To'] = correo_destino_et
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
-                msg.attach(MIMEText(f"Se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
+                msg.attach(MIMEText(f"Estimados, junto con saludar se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
                 
                 with open(archivo_pdf_et, "rb") as attachment: part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
