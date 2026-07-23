@@ -159,10 +159,13 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.set_auto_page_break(auto=True, margin=15) 
     pdf.add_page()
     if os.path.exists(logo_filename):
-        pdf.image(logo_filename, x=10, y=10, h=25)
-        pdf.set_y(40) 
-    else: pdf.set_y(15)
+        pdf.image(logo_filename, x=10, y=10, h=20)
+    if os.path.exists("logo2.png"):
+        pdf.image("logo2.png", x=170, y=10, h=20)
+    elif os.path.exists("logo2.jpg"):
+        pdf.image("logo2.jpg", x=170, y=10, h=20)
         
+    pdf.set_y(35) 
     pdf.set_font("Helvetica", 'B', 15)
     pdf.set_fill_color(0, 51, 102); pdf.set_text_color(255, 255, 255) 
     pdf.cell(190, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=1, ln=True, align='C', fill=True)
@@ -417,7 +420,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
     elif st.session_state.hpt_step == 2:
         st.subheader("Checklist EPP")
-        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son strictly obligatorios.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son estrictamente obligatorios.</p>", unsafe_allow_html=True)
         estado_epp = st.session_state.hpt_data["epp"]
         col1, col2 = st.columns(2)
         with col1:
@@ -504,6 +507,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 try:
                     pdf = FPDF(); pdf.add_page()
                     if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=20)
+                    if os.path.exists("logo2.png"): pdf.image("logo2.png", x=170, y=8, h=20)
+                    elif os.path.exists("logo2.jpg"): pdf.image("logo2.jpg", x=170, y=8, h=20)
+                    
                     pdf.set_y(32); pdf.set_font("Arial", "B", 12)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(2)
                     pdf.set_fill_color(200, 220, 255); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "1. DATOS OPERATIVOS", border=1, ln=True, fill=True)
@@ -526,21 +532,21 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     texto_tarea = f"FAENA: {data.get('faena', '')}\nDETALLES: {data.get('tarea', '')}"
                     pdf.multi_cell(190, 5, texto_tarea, border=1)
 
-                    pdf.ln(3); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=1, ln=True, fill=True); pdf.set_font("Arial", "", 8)
+                    pdf.ln(2); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=1, ln=True, fill=True); pdf.set_font("Arial", "", 8)
                     epp_labels = ["Guantes", "Chaleco", "Zapatos", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
                     epp_vals = data.get('epp', []); epp_seleccionados = [epp_labels[i] for i in range(len(epp_labels)) if i < len(epp_vals) and epp_vals[i]]
                     if not epp_seleccionados: pdf.cell(190, 6, "Ningun EPP registrado o Aplica (Puerto Cerrado Total).", border=1, ln=True)
                     else:
                         for i, epp in enumerate(epp_seleccionados): pdf.cell(190/3, 6, f"[ X ] {epp}", border=1, ln=1 if (i + 1) % 3 == 0 or i == len(epp_seleccionados) - 1 else 0)
 
-                    pdf.ln(3); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "3. RIESGOS CRITICOS EVALUADOS (ERC)", border=1, ln=True, fill=True); pdf.set_font("Arial", "", 8)
+                    pdf.ln(2); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "3. RIESGOS CRITICOS EVALUADOS (ERC)", border=1, ln=True, fill=True); pdf.set_font("Arial", "", 8)
                     erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Navegacion", "Atrapamiento"]
                     erc_vals = data.get('erc', []); erc_seleccionados = [erc_labels[i] for i in range(len(erc_labels)) if i < len(erc_vals) and erc_vals[i]]
                     if not erc_seleccionados: pdf.cell(190, 6, "Ningun Riesgo seleccionado o Aplica (Puerto Cerrado Total).", border=1, ln=True)
                     else:
                         for i, erc in enumerate(erc_seleccionados): pdf.cell(190/2, 6, f"[ X ] {erc}", border=1, ln=1 if (i + 1) % 2 == 0 or i == len(erc_seleccionados) - 1 else 0)
 
-                    pdf.ln(3); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
+                    pdf.ln(2); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_relator[:35], border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Cargo Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, "Piloto ROV", border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Tema Difundido:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, tc_nombre[:80], border=1, ln=True)
@@ -677,7 +683,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
             with open(st.session_state.hpt_pdf_generado, "rb") as pdf_file:
                 st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=st.session_state.hpt_pdf_generado, mime="application/pdf", use_container_width=True)
 
-
 elif st.session_state.current_page == 'reporte_diario':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.title("Reporte Diario Operativo")
@@ -688,7 +693,6 @@ elif st.session_state.current_page == 'reporte_diario':
     area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida"); correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
     st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
 
-    # Se eliminó la opción "Día de Descanso"
     estado_turno = st.radio("Estado Operativo del Piloto", ["Operativo (Faena Normal)", "Detenido por Salud / Licencia"], horizontal=True)
 
     col1, col2 = st.columns(2)
@@ -716,7 +720,7 @@ elif st.session_state.current_page == 'reporte_diario':
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
             
         # Spacer invisible para igualar la altura del botón SITPORT de la columna 1
-        st.markdown("<div style='height: 53px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
         correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
 
     # Fuera de las columnas para mantener la simetría visual
@@ -747,6 +751,9 @@ elif st.session_state.current_page == 'reporte_diario':
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
             if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=20)
+            if os.path.exists("logo2.png"): pdf_rd.image("logo2.png", x=170, y=8, h=20)
+            elif os.path.exists("logo2.jpg"): pdf_rd.image("logo2.jpg", x=170, y=8, h=20)
+            
             pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(3)
             
             pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
@@ -762,7 +769,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(160, 6, condicion_puerto_rd, border=1, ln=True)
 
             pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Estructura Intervenida:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(190, 6, jaula_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Estructura Intervenida:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(190, 6, str(jaula_rd), border=1, ln=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8)
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
@@ -848,7 +855,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg['To'] = ", ".join(lista_destinatarios_rd)
             msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Estimados, muy buenas tardes, junto con saludar se adjunta reporte diario de faenas realizadas.", 'plain'))
+            msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta reporte diario.", 'plain'))
             
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -1018,7 +1025,6 @@ elif st.session_state.current_page == 'entrega_turno':
                 server.quit()
 
                 try:
-                    import imaplib
                     imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
                     imap.login(remitente, password)
                     imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
