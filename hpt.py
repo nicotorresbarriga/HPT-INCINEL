@@ -677,7 +677,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
             with open(st.session_state.hpt_pdf_generado, "rb") as pdf_file:
                 st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=st.session_state.hpt_pdf_generado, mime="application/pdf", use_container_width=True)
 
-<!-- ... existing code ... -->
+
 elif st.session_state.current_page == 'reporte_diario':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.title("Reporte Diario Operativo")
