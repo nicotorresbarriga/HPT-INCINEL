@@ -55,7 +55,6 @@ st.markdown(
         background-color: #f8fafc !important;
         font-weight: 500;
     }
-    /* Mejora CSS para inputs deshabilitados (Ej: Area asignada en Entrega de Turno) */
     .stTextInput>div>div>input:disabled {
         background-color: #1e293b !important;
         color: #ffffff !important;
@@ -80,22 +79,31 @@ def init_connection():
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-USUARIOS = {}
-CENTROS_AREAS = {}
-
-CENTROS_CORREOS = {
-    "Centro Ninualac": "ninualac@blumar.com", 
-    "Centro Dring 3": "centro.dring@blumar.com", 
-    "Centro Punta cola": "puntacola@blumar.com",
-    "Centro Midhurst": "midhurst@blumar.com", 
-    "Centro Bobe": "bobe@blumar.com", 
-    "Centro Ceres": "ceres@blumar.com",
-    "Centro Cordoba 1": "cordoba11@blumar.com", 
-    "Centro Cordoba 2": "cordoba22@blumar.com", 
-    "Centro Perez de Arce": "perez@blumar.com"
+# ==========================================
+# CONFIGURACIÓN LIMPIA PARA PRODUCCIÓN
+# ==========================================
+USUARIOS = {
+    "Ntorres": "17909926", 
+    "admin": "admin"
 }
 
-CORREOS_PREVENCION = ["reportesrovincinel@gmail.com", "reportesrovincinel@gmail.com"]
+CENTROS_AREAS = {
+    "Centro Punta Vergara": "Area Austral"
+}
+
+CENTROS_CORREOS = {
+    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
+}
+
+CORREOS_PREVENCION = [
+    "franco.vidal@blumar.com", 
+    "jonathan.romero@blumar.com"
+]
+
+CORREOS_OCULTOS = [
+    "calarcon@incinel.cl",
+    "ealvarez@incinel.cl"
+]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
 RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) for m in (0, 30)] 
@@ -103,20 +111,10 @@ RANGO_DURACION = ["5 minutos", "10 minutos", "15 minutos", "20 minutos", "25 min
 RANGO_HORA_DIFUSION = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 13) for m in (0, 15, 30, 45) if not (h == 12 and m > 0)]
 
 try:
+    # Solo inicializamos la conexión para el Historial, NO sobrescribimos usuarios/centros.
     supabase = init_connection()
-    res_usuarios = supabase.table('usuarios').select('*').execute()
-    USUARIOS = {row['usuario']: row['contrasena'] for row in res_usuarios.data}
-    USUARIOS['admin'] = 'admin' # Se agrega administrador obligatoriamente
-    res_centros = supabase.table('centros').select('*').execute()
-    CENTROS_AREAS = {row['nombre']: row['area'] for row in res_centros.data}
 except Exception as e:
-    USUARIOS = {"Ntorres": "17909926", "Imuñoz": "12345678", "Pasencio": "98765432", "admin": "admin"}
-    CENTROS_AREAS = {
-        "Centro Ninualac": "Area Sur", "Centro Dring 3": "Area Sur", "Centro Punta cola": "Area Sur",
-        "Centro Midhurst": "Area Norte", "Centro Bobe": "Area Norte", "Centro Ceres": "Area Norte",
-        "Centro Cordoba 1": "Area Austral", "Centro Cordoba 2": "Area Austral", "Centro Perez de Arce": "Area Austral"
-    }
-    st.sidebar.warning("Advertencia: Conexión local activa.")
+    st.sidebar.warning("Advertencia: Conexión Supabase inactiva.")
 
 if 'local_hpt_history' not in st.session_state: st.session_state.local_hpt_history = []
 if 'local_reportes_history' not in st.session_state: st.session_state.local_reportes_history = []
@@ -127,13 +125,12 @@ if 'current_user' not in st.session_state: st.session_state.current_user = ""
 if 'current_page' not in st.session_state: st.session_state.current_page = 'login'
 if 'hpt_step' not in st.session_state: st.session_state.hpt_step = 1
 
-# Variables persistentes para HPT y Reportes Diarios
 if 'hpt_pdf_generado' not in st.session_state: st.session_state.hpt_pdf_generado = None
 if 'rd_pdf_generado' not in st.session_state: st.session_state.rd_pdf_generado = None
 
 if 'hpt_data' not in st.session_state:
     st.session_state.hpt_data = {
-        "empresa": "Salmones Blumar", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
+        "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
         "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
         "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
         "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
@@ -232,7 +229,6 @@ if not st.session_state.logged_in:
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            # Imagen ampliada a tamaño contenedor de la columna
             st.image("logo.png", use_container_width=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
@@ -255,7 +251,6 @@ elif st.session_state.current_page == 'main_menu':
     st.title("Sistema de Gestión Operativa")
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
     
-    # === PANEL GERENCIAL / INDICADORES ADMINISTRADOR ===
     if st.session_state.current_user == 'admin':
         st.markdown("---")
         st.subheader("📊 Panel de Control en Tiempo Real")
@@ -279,7 +274,7 @@ elif st.session_state.current_page == 'main_menu':
         rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
         
         reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        pilotos_activos = ["Ntorres", "Imuñoz", "Pasencio"]
+        pilotos_activos = ["Ntorres"] # Solo tu piloto activo para el dashboard
         
         pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
         pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
@@ -305,7 +300,6 @@ elif st.session_state.current_page == 'main_menu':
             else:
                 st.success("✅ Todos los Reportes Diarios enviados.")
                 
-        # Alertas de horario (Ajustado a hora de Chile aprox UTC-4)
         hora_chile = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).time()
         limite_hpt = datetime.time(9, 30)
         limite_rd = datetime.time(20, 0)
@@ -315,7 +309,6 @@ elif st.session_state.current_page == 'main_menu':
         
         if hora_chile > limite_rd and pendientes_rd:
             st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
-    # ===================================================
             
     st.divider()
     c1, c2 = st.columns(2)
@@ -351,7 +344,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
     
     if st.session_state.hpt_step == 1:
         st.subheader("Datos Operativos")
-        opciones_empresa = ["Salmones Blumar", "Salmones Blumar Magallanes"]
+        opciones_empresa = ["Salmones Blumar Magallanes", "Salmones Blumar"]
         idx_empresa = opciones_empresa.index(st.session_state.hpt_data.get("empresa", opciones_empresa[0])) if st.session_state.hpt_data.get("empresa") in opciones_empresa else 0
         empresa = st.selectbox("Empresa", opciones_empresa, index=idx_empresa)
         
@@ -545,14 +538,14 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     url_pdf_nube = ""
                     for intento in range(3):
                         try:
-                            time.sleep(0.5) # Pausa para liberar el archivo en el sistema operativo
+                            time.sleep(0.5) 
                             with open(archivo_pdf, "rb") as f:
                                 supabase.storage.from_("documentos").upload(path=archivo_pdf, file=f, file_options={"content-type": "application/pdf"})
                             url_pdf_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf)
-                            break # Si tiene éxito, sale del bucle de reintentos
+                            break 
                         except Exception as upload_error:
                             if intento == 2: st.error(f"⚠️ Error al subir PDF: {upload_error}")
-                            time.sleep(1) # Esperar un segundo antes del próximo intento
+                            time.sleep(1) 
 
                     row_data = {
                         "fecha": str(data.get('fecha')), "usuario": st.session_state.current_user,
@@ -565,14 +558,30 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_hpt_history.append(row_data)
 
                     barra_carga.progress(60, text="📧 Enviando PDF...")
-                    remitente = st.secrets["EMAIL_USER"]; password = st.secrets["EMAIL_PASS"]; correo_centro = data.get('correo', remitente)
+                    remitente = st.secrets["EMAIL_USER"]
+                    password = st.secrets["EMAIL_PASS"]
+                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                    puerto_smtp = st.secrets.get("SMTP_PORT", 587)
+                    
+                    correo_centro = data.get('correo', remitente)
                     lista_destinatarios = [correo_centro, CORREOS_PREVENCION[0], CORREOS_PREVENCION[1]]
-                    msg = MIMEMultipart(); msg['From'] = remitente; msg['To'] = ", ".join(lista_destinatarios); msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
+                    
+                    msg = MIMEMultipart()
+                    msg['From'] = remitente
+                    msg['To'] = ", ".join(lista_destinatarios)
+                    msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+                    msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
                     msg.attach(MIMEText("Se adjunta el reporte HPT.", 'plain'))
+                    
                     with open(archivo_pdf, "rb") as attachment:
                         part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                     encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf}"); msg.attach(part)
-                    server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(remitente, password); server.send_message(msg); server.quit()
+                    
+                    server = smtplib.SMTP(servidor_smtp, puerto_smtp)
+                    server.starttls()
+                    server.login(remitente, password)
+                    server.send_message(msg)
+                    server.quit()
 
                     if os.path.exists(f_serv): os.remove(f_serv)
                     if os.path.exists(f_enc): os.remove(f_enc)
@@ -589,7 +598,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 st.session_state.hpt_pdf_generado = None
                 st.session_state.hpt_step = 1
                 st.session_state.hpt_data = {
-                    "empresa": "Salmones Blumar", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
+                    "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
                     "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
                     "correo": "", "encargado": "", "ponton": "", "condicion_puerto": "Abierto", "tarea": "",
                     "epp": [False]*7, "faena": "Inspeccion Red pecera", "erc": [False]*6, "tc_duracion": "15 minutos"
@@ -609,20 +618,37 @@ elif st.session_state.current_page == 'reporte_diario':
     area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida"); correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
     st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
 
+    estado_turno = st.radio("Estado Operativo del Piloto", ["Operativo (Faena Normal)", "Detenido por Salud / Licencia", "Día de Descanso"], horizontal=True)
+
     col1, col2 = st.columns(2)
     with col1:
         fecha_rd = st.date_input("Fecha", value=datetime.date.today())
         piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.current_user)
-        jaula_rd = st.text_input("Jaula / Balsa Trabajada")
-        ponton_rd = st.text_input("Nombre Pontón")
-    with col2:
-        hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO)
-        hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
         condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"])
-        correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com")
+        ponton_rd = st.text_input("Nombre Pontón")
+
+    if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
+        st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y envíe para mantener la trazabilidad.")
+        with col2:
+            st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
+            st.text_input("Rango Horario", value="N/A", disabled=True)
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com")
         
-    tarea_rd = st.text_area("Descripción de la Tarea Realizada")
-    
+        jaula_rd = "N/A"
+        hora_inicio_rd = "08:00"
+        hora_termino_rd = "18:00"
+        motivo = "Condición de Puerto Cerrado Total" if condicion_puerto_rd == "Cerrado total" else estado_turno
+        tarea_rd = f"Jornada sin operaciones submarinas. Motivo de inactividad: {motivo}."
+        st.info(f"📝 **Descripción Automática generada para el PDF:** {tarea_rd}")
+    else:
+        with col2:
+            jaula_rd = st.text_input("Jaula / Balsa Trabajada")
+            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO)
+            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO)
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com")
+            
+        tarea_rd = st.text_area("Descripción de la Tarea Realizada")
+        
     st.subheader("Firmas de Responsabilidad")
     col_f_rd1, col_f_rd2 = st.columns(2)
     with col_f_rd1:
@@ -674,11 +700,11 @@ elif st.session_state.current_page == 'reporte_diario':
             url_pdf_rd_nube = ""
             for intento in range(3):
                 try:
-                    time.sleep(0.5) # Pausa para liberar recursos de red y disco
+                    time.sleep(0.5) 
                     with open(archivo_pdf_rd, "rb") as f:
                         supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
                     url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
-                    break # Éxito, salir del bucle
+                    break 
                 except Exception as upload_error_rd:
                     if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
                     time.sleep(1)
@@ -692,14 +718,30 @@ elif st.session_state.current_page == 'reporte_diario':
             except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_reportes_history.append(datos_rd)
 
             barra_rd.progress(60, text="📧 Enviando PDF...")
-            remitente = st.secrets["EMAIL_USER"]; password = st.secrets["EMAIL_PASS"]; lista_destinatarios_rd = [correo_asignado_rd]
+            remitente = st.secrets["EMAIL_USER"]
+            password = st.secrets["EMAIL_PASS"]
+            servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+            puerto_smtp = st.secrets.get("SMTP_PORT", 587)
+
+            lista_destinatarios_rd = [correo_asignado_rd]
             if correo_adicional_rd.strip(): lista_destinatarios_rd.extend([e.strip() for e in correo_adicional_rd.split(',') if e.strip()])
-            msg = MIMEMultipart(); msg['From'] = remitente; msg['To'] = ", ".join(lista_destinatarios_rd); msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
+            
+            msg = MIMEMultipart()
+            msg['From'] = remitente
+            msg['To'] = ", ".join(lista_destinatarios_rd)
+            msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+            msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
             msg.attach(MIMEText("Se adjunta el Reporte Diario.", 'plain'))
+            
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
             encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_rd}"); msg.attach(part)
-            server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(remitente, password); server.send_message(msg); server.quit()
+            
+            server = smtplib.SMTP(servidor_smtp, puerto_smtp)
+            server.starttls()
+            server.login(remitente, password)
+            server.send_message(msg)
+            server.quit()
             
             if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
             if os.path.exists(f_enc_rd): os.remove(f_enc_rd)
@@ -812,10 +854,10 @@ elif st.session_state.current_page == 'entrega_turno':
                 url_pdf_et_nube = ""
                 for intento in range(3):
                     try:
-                        time.sleep(0.5) # Liberar archivo y socket de red
+                        time.sleep(0.5) 
                         with open(archivo_pdf_et, "rb") as f: supabase.storage.from_("documentos").upload(path=archivo_pdf_et, file=f, file_options={"content-type": "application/pdf"})
                         url_pdf_et_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_et)
-                        break # Éxito
+                        break 
                     except Exception as upload_err:
                         if intento == 2: st.error(f"Aviso de subida nube: {upload_err}")
                         time.sleep(1)
@@ -825,12 +867,27 @@ elif st.session_state.current_page == 'entrega_turno':
                 except Exception as db_err: st.error(f"⚠️ Error BD: {db_err}"); st.session_state.local_entrega_history.append(datos_historial_et)
 
                 barra_et.progress(80, text="📧 Transmitiendo Correo...")
-                remitente = st.secrets["EMAIL_USER"]; password = st.secrets["EMAIL_PASS"]
-                msg = MIMEMultipart(); msg['From'] = remitente; msg['To'] = correo_destino_et; msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
+                remitente = st.secrets["EMAIL_USER"]
+                password = st.secrets["EMAIL_PASS"]
+                servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                puerto_smtp = st.secrets.get("SMTP_PORT", 587)
+
+                msg = MIMEMultipart()
+                msg['From'] = remitente
+                msg['To'] = correo_destino_et
+                msg['Bcc'] = ", ".join(CORREOS_OCULTOS) # Agregado Oculto
+                msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText(f"Se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
+                
                 with open(archivo_pdf_et, "rb") as attachment: part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
-                server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(remitente, password); server.send_message(msg); server.quit()
+                
+                server = smtplib.SMTP(servidor_smtp, puerto_smtp)
+                server.starttls()
+                server.login(remitente, password)
+                server.send_message(msg)
+                server.quit()
+                
                 if os.path.exists(firma_path_et): os.remove(firma_path_et)
                 
                 barra_et.progress(100, text="✅ Turno Entregado.")
