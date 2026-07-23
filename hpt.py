@@ -224,7 +224,8 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
 
     # Pie de página / Marca de Agua
-    pdf.set_y(-15)
+    pdf.set_auto_page_break(auto=False)
+    pdf.set_y(-12)
     pdf.set_font("Helvetica", 'I', 8)
     pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
@@ -530,15 +531,16 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Fecha y Hora:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, f"{tc_fecha} {tc_hora}", border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_duracion, border=1, ln=True)
 
-                    pdf.ln(3); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-                    pdf.cell(95, 20, "", border=1); pdf.cell(95, 20, "", border=1, ln=True)
+                    pdf.ln(2); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+                    pdf.cell(95, 18, "", border=1); pdf.cell(95, 18, "", border=1, ln=True)
                     id_firmas = uuid.uuid4().hex[:8]; f_serv = f"f_serv_{id_firmas}.jpg"; f_enc = f"f_encargado_{id_firmas}.jpg"
-                    if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-19, w=45, h=18)
-                    if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-19, w=45, h=18)
+                    if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-17, w=45, h=15)
+                    if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-17, w=45, h=15)
                     pdf.set_font("Arial", "B", 8); pdf.cell(95, 6, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
                     # Pie de página / Marca de Agua
-                    pdf.set_y(-15)
+                    pdf.set_auto_page_break(auto=False)
+                    pdf.set_y(-12)
                     pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
                     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
@@ -585,7 +587,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     msg['To'] = ", ".join(lista_destinatarios)
                     msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                     msg['Subject'] = f"Reporte HPT - {data.get('centro')}"
-                    msg.attach(MIMEText("Estimados muy buen dia, junto con saludar se adjunta el reporte HPT.", 'plain'))
+                    msg.attach(MIMEText("Estimados muy buen dia, junto con saludar se adjunta HPT.", 'plain'))
                     
                     with open(archivo_pdf, "rb") as attachment:
                         part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -706,15 +708,16 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8)
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
-            pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-            pdf_rd.cell(95, 20, "", border=1); pdf_rd.cell(95, 20, "", border=1, ln=True)
+            pdf_rd.ln(4); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+            pdf_rd.cell(95, 18, "", border=1); pdf_rd.cell(95, 18, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
-            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-19, w=45, h=18)
-            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-19, w=45, h=18)
+            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-17, w=45, h=15)
+            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-17, w=45, h=15)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
             # Pie de página / Marca de Agua
-            pdf_rd.set_y(-15)
+            pdf_rd.set_auto_page_break(auto=False)
+            pdf_rd.set_y(-12)
             pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
@@ -759,7 +762,7 @@ elif st.session_state.current_page == 'reporte_diario':
             msg['To'] = ", ".join(lista_destinatarios_rd)
             msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
             msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta el Reporte Diario.", 'plain'))
+            msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta reporte diario.", 'plain'))
             
             with open(archivo_pdf_rd, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
@@ -913,7 +916,7 @@ elif st.session_state.current_page == 'entrega_turno':
                 msg['To'] = correo_destino_et
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
-                msg.attach(MIMEText(f"Estimados muy buenas tardes, junto con saludar se adjunta el reporte formal de entrega de turno del centro {centro_et}.", 'plain'))
+                msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta entrega formal de turno.", 'plain'))
                 
                 with open(archivo_pdf_et, "rb") as attachment: part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
