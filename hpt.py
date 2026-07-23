@@ -80,7 +80,7 @@ def init_connection():
     return create_client(url, key)
 
 # ==========================================
-# CONFIGURACIÓN LIMPIA PARA PRODUCCIÓN
+# CONFIGURACIÓN MODO PRUEBAS (CERO SPAM)
 # ==========================================
 USUARIOS = {
     "Ntorres": "17909926", 
@@ -91,18 +91,18 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
+# TODO REDIRIGIDO A REPORTESROVINCINEL PARA LA PRUEBA
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
+    "Centro Punta Vergara": "reportesrovincinel@gmail.com"
 }
 
 CORREOS_PREVENCION = [
-    "franco.vidal@blumar.com", 
-    "jonathan.romero@blumar.com"
+    "reportesrovincinel@gmail.com", 
+    "reportesrovincinel@gmail.com"
 ]
 
 CORREOS_OCULTOS = [
-    "calarcon@incinel.cl",
-    "ealvarez@incinel.cl"
+    "reportesrovincinel@gmail.com"
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
