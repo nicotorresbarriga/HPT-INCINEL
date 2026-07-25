@@ -93,10 +93,18 @@ CENTROS_AREAS = {
 }
 
 # TODO REDIRIGIDO A REPORTESROVINCINEL PARA LA PRUEBA
-CENTROS_CORREOS = {"Centro Punta Vergara": "centro.puntavergara@blumar.com"}
-CORREOS_PREVENCION = ["franco.vidal@blumar.com", "jonathan.romero@blumar.com"]
-CORREOS_OCULTOS = ["calarcon@incinel.cl", "ealvarez@incinel.cl", "ntorresbarriga.1992@gmail.com"]
+CENTROS_CORREOS = {
+    "Centro Punta Vergara": "reportesrovincinel@gmail.com"
+}
 
+CORREOS_PREVENCION = [
+    "reportesrovincinel@gmail.com", 
+    "reportesrovincinel@gmail.com"
+]
+
+CORREOS_OCULTOS = [
+    "reportesrovincinel@gmail.com"
+]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
 RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) for m in (0, 30)] 
@@ -693,31 +701,21 @@ elif st.session_state.current_page == 'reporte_diario':
         piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.get("rd_piloto", st.session_state.current_user), key="rd_piloto")
         condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"], key="rd_puerto")
         st.link_button("🌐 Revisar SITPORT (Directemar)", "https://sitport.directemar.cl/#/general", use_container_width=True)
-        ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
         
         evidencia_img_rd = None
         if condicion_puerto_rd in ["Cerrado para naves menores", "Cerrado total"]:
             evidencia_img_rd = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'], key="rd_evidencia")
 
-    is_express = (estado_turno != "Operativo (Faena Normal)") or (condicion_puerto_rd == "Cerrado total")
+        ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
 
-    with col2:
-        if is_express:
+    if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
+        st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y guarde para mantener la trazabilidad.")
+        with col2:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
-            st.text_input("Hora Inicio Rango", value="N/A", disabled=True)
-            st.text_input("Hora Término Rango", value="N/A", disabled=True)
-        else:
-            jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
-            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
-            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
-            
-        # Spacer invisible para igualar la altura del botón SITPORT de la columna 1
-        st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
-        correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
-
-    # Fuera de las columnas para mantener la simetría visual
-    if is_express:
-        st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y envíe para mantener la trazabilidad.")
+            st.text_input("Rango Horario", value="N/A", disabled=True)
+            st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
+        
         jaula_rd = "N/A"
         hora_inicio_rd = "08:00"
         hora_termino_rd = "18:00"
@@ -725,6 +723,13 @@ elif st.session_state.current_page == 'reporte_diario':
         tarea_rd = f"Jornada sin operaciones submarinas. Motivo de inactividad: {motivo}."
         st.info(f"📝 **Descripción Automática generada para el PDF:** {tarea_rd}")
     else:
+        with col2:
+            jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
+            hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
+            hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
+            st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
+            correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
+            
         tarea_rd = st.text_area("Descripción de la Tarea Realizada", key="rd_tarea")
         
     st.subheader("Firmas de Responsabilidad")
@@ -736,17 +741,17 @@ elif st.session_state.current_page == 'reporte_diario':
         st.write("Firma Encargado de Centro")
         firma_encargado_rd = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_e_rd")
 
-    submit_rd = st.button("GENERAR Y ENVIAR REPORTE DIARIO", type="primary", use_container_width=True)
+    submit_rd = st.button("GENERAR Y GUARDAR REPORTE DIARIO", type="primary", use_container_width=True)
 
     if submit_rd:
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=20)
-            if os.path.exists("logo2.png"): pdf_rd.image("logo2.png", x=170, y=8, h=20)
-            elif os.path.exists("logo2.jpg"): pdf_rd.image("logo2.jpg", x=170, y=8, h=20)
+            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=25)
+            if os.path.exists("logo2.png"): pdf_rd.image("logo2.png", x=170, y=8, h=25)
+            elif os.path.exists("logo2.jpg"): pdf_rd.image("logo2.jpg", x=170, y=8, h=25)
             
-            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(3)
+            pdf_rd.set_y(40); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(5)
             
             pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(fecha_rd), border=1)
@@ -765,11 +770,11 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8)
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
-            pdf_rd.ln(4); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-            pdf_rd.cell(95, 18, "", border=1); pdf_rd.cell(95, 18, "", border=1, ln=True)
+            pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+            pdf_rd.cell(95, 20, "", border=1); pdf_rd.cell(95, 20, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
-            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-17, w=45, h=15)
-            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-17, w=45, h=15)
+            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-19, w=45, h=18)
+            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-19, w=45, h=18)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
             # Agregar foto de evidencia de puerto si existe
@@ -813,6 +818,7 @@ elif st.session_state.current_page == 'reporte_diario':
             
             st.session_state.rd_pdf_generado = archivo_pdf_rd
 
+            barra_rd.progress(50, text="☁️ Subiendo a la Nube (Historial)...")
             url_pdf_rd_nube = ""
             for intento in range(3):
                 try:
@@ -832,40 +838,6 @@ elif st.session_state.current_page == 'reporte_diario':
             }
             try: supabase.table('reportes_history').insert(datos_rd).execute()
             except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_reportes_history.append(datos_rd)
-
-            barra_rd.progress(60, text="📧 Enviando PDF...")
-            remitente = st.secrets["EMAIL_USER"]
-            password = st.secrets["EMAIL_PASS"]
-            servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
-            puerto_smtp = st.secrets.get("SMTP_PORT", 587)
-
-            lista_destinatarios_rd = [correo_asignado_rd]
-            if correo_adicional_rd.strip(): lista_destinatarios_rd.extend([e.strip() for e in correo_adicional_rd.split(',') if e.strip()])
-            
-            msg = MIMEMultipart()
-            msg['From'] = remitente
-            msg['To'] = ", ".join(lista_destinatarios_rd)
-            msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
-            msg['Subject'] = f"Reporte Diario ROV - {centro_rd}"
-            msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta reporte diario.", 'plain'))
-            
-            with open(archivo_pdf_rd, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
-            encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_rd}"); msg.attach(part)
-            
-            server = smtplib.SMTP(servidor_smtp, puerto_smtp)
-            server.starttls()
-            server.login(remitente, password)
-            server.send_message(msg)
-            server.quit()
-
-            try:
-                imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
-                imap.login(remitente, password)
-                imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
-                imap.logout()
-            except Exception:
-                pass
             
             if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
             if os.path.exists(f_enc_rd): os.remove(f_enc_rd)
@@ -876,17 +848,21 @@ elif st.session_state.current_page == 'reporte_diario':
             barra_rd.empty(); st.error(f"Error técnico: {e}")
             
     if st.session_state.rd_pdf_generado and os.path.exists(st.session_state.rd_pdf_generado):
-        st.success("✅ Reporte Diario Generado y Enviado con éxito.")
-        if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
-            st.session_state.rd_pdf_generado = None
-            # Borramos de la sesión las variables guardadas en los inputs
-            for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
-            
-        with open(st.session_state.rd_pdf_generado, "rb") as pdf_file: 
-            st.download_button(label="📥 Descargar Copia Local PDF", data=pdf_file, file_name=st.session_state.rd_pdf_generado, mime="application/pdf", use_container_width=True)
+        st.success("✅ Reporte Diario Generado y guardado en el historial con éxito.")
+        
+        col_down1, col_down2 = st.columns(2)
+        with col_down1:
+            with open(st.session_state.rd_pdf_generado, "rb") as pdf_file: 
+                st.download_button(label="📥 Descargar PDF para Adjuntar", data=pdf_file, file_name=st.session_state.rd_pdf_generado, mime="application/pdf", use_container_width=True)
+                
+        with col_down2:
+            if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
+                st.session_state.rd_pdf_generado = None
+                # Borramos de la sesión las variables guardadas en los inputs
+                for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
 
 elif st.session_state.current_page == 'entrega_turno':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
