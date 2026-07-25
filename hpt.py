@@ -81,7 +81,7 @@ def init_connection():
     return create_client(url, key)
 
 # ==========================================
-# CONFIGURACIÓN MODO PRUEBAS (CERO SPAM)
+# CONFIGURACIÓN REAL (PRODUCCIÓN)
 # ==========================================
 USUARIOS = {
     "Ntorres": "17909926", 
@@ -92,18 +92,21 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
-# TODO REDIRIGIDO A REPORTESROVINCINEL PARA LA PRUEBA
+# CORREOS REALES DEL CENTRO
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "reportesrovincinel@gmail.com"
+    "Centro Punta Vergara": "ccentro.puntavergara@blumar.com"
 }
 
+# CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    "reportesrovincinel@gmail.com", 
-    "reportesrovincinel@gmail.com"
+    "ffranco.vidal@blumar.com", 
+    "jjonathan.romero@blumar.com"
 ]
 
+# CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    "reportesrovincinel@gmail.com"
+    "ccalarcon@incinel.cl", 
+    "eealvarez@incinel.cl"
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
@@ -160,10 +163,6 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.add_page()
     if os.path.exists(logo_filename):
         pdf.image(logo_filename, x=10, y=10, h=20)
-    if os.path.exists("logo2.png"):
-        pdf.image("logo2.png", x=170, y=10, h=20)
-    elif os.path.exists("logo2.jpg"):
-        pdf.image("logo2.jpg", x=170, y=10, h=20)
         
     pdf.set_y(35) 
     pdf.set_font("Helvetica", 'B', 15)
@@ -507,8 +506,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 try:
                     pdf = FPDF(); pdf.add_page()
                     if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=20)
-                    if os.path.exists("logo2.png"): pdf.image("logo2.png", x=170, y=8, h=20)
-                    elif os.path.exists("logo2.jpg"): pdf.image("logo2.jpg", x=170, y=8, h=20)
                     
                     pdf.set_y(32); pdf.set_font("Arial", "B", 12)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(2)
@@ -713,7 +710,7 @@ elif st.session_state.current_page == 'reporte_diario':
         with col2:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
             st.text_input("Rango Horario", value="N/A", disabled=True)
-            st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 53px;'></div>", unsafe_allow_html=True)
             correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
         
         jaula_rd = "N/A"
@@ -747,11 +744,9 @@ elif st.session_state.current_page == 'reporte_diario':
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=25)
-            if os.path.exists("logo2.png"): pdf_rd.image("logo2.png", x=170, y=8, h=25)
-            elif os.path.exists("logo2.jpg"): pdf_rd.image("logo2.jpg", x=170, y=8, h=25)
+            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=20)
             
-            pdf_rd.set_y(40); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(5)
+            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(3)
             
             pdf_rd.set_fill_color(200, 220, 255); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "1. DATOS GENERALES", border=1, ln=True, fill=True)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, str(fecha_rd), border=1)
@@ -770,11 +765,11 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True); pdf_rd.set_font("Arial", "", 8)
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
-            pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
-            pdf_rd.cell(95, 20, "", border=1); pdf_rd.cell(95, 20, "", border=1, ln=True)
+            pdf_rd.ln(4); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+            pdf_rd.cell(95, 18, "", border=1); pdf_rd.cell(95, 18, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
-            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-19, w=45, h=18)
-            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-19, w=45, h=18)
+            if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-17, w=45, h=15)
+            if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-17, w=45, h=15)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 6, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 6, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
             # Agregar foto de evidencia de puerto si existe
@@ -804,13 +799,13 @@ elif st.session_state.current_page == 'reporte_diario':
                 x_pos = (210 - w_mm) / 2
                 pdf_rd.image(temp_img_path, x=x_pos, y=pdf_rd.get_y(), w=w_mm, h=h_mm)
                 os.remove(temp_img_path)
-
-            # Pie de página / Marca de Agua
-            pdf_rd.set_auto_page_break(auto=False)
-            pdf_rd.set_y(-12)
-            pdf_rd.set_font("Arial", "I", 8)
-            pdf_rd.set_text_color(128, 128, 128)
-            pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+                            if h_mm > 180:
+                                h_mm = 180
+                                w_mm = h_mm / aspect
+                                
+                        x_pos = (210 - w_mm) / 2
+                        pdf_rd.image(temp_img_path, x=x_pos, y=pdf_rd.get_y(), w=w_mm, h=h_mm)
+                        os.remove(temp_img_path)
 
             identificador_unico_rd = str(uuid.uuid4())[:8]
             archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
@@ -953,7 +948,10 @@ elif st.session_state.current_page == 'entrega_turno':
             nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
             
             try:
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, "logo.png", nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                # SELECCIONAMOS LOGO2 PARA EL PDF DE ENTREGA DE TURNO
+                logo_incinel = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else ""
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_incinel, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
                 for intento in range(3):
@@ -993,6 +991,7 @@ elif st.session_state.current_page == 'entrega_turno':
                 server.quit()
 
                 try:
+                    import imaplib
                     imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
                     imap.login(remitente, password)
                     imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
