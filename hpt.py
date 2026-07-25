@@ -81,7 +81,7 @@ def init_connection():
     return create_client(url, key)
 
 # ==========================================
-# CONFIGURACIÓN REAL (PRODUCCIÓN)
+# CONFIGURACIÓN DE PRUEBAS (TESTING)
 # ==========================================
 USUARIOS = {
     "Ntorres": "17909926", 
@@ -92,21 +92,21 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
-# CORREOS REALES DEL CENTRO
+# CORREO DE PRUEBAS GENERAL
+CORREO_PRUEBAS = "reportesrovincinel@gmail.com"
+
+# REDIRIGIR TODO AL CORREO DE PRUEBAS
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "ccentro.puntavergara@blumar.com"
+    "Centro Punta Vergara": CORREO_PRUEBAS
 }
 
-# CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    "ffranco.vidal@blumar.com", 
-    "jjonathan.romero@blumar.com"
+    CORREO_PRUEBAS, 
+    CORREO_PRUEBAS
 ]
 
-# CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    "ccalarcon@incinel.cl", 
-    "eealvarez@incinel.cl"
+    CORREO_PRUEBAS
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
@@ -505,7 +505,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    if os.path.exists("logo.png"): pdf.image("logo.png", x=10, y=8, h=20)
+                    # BUSCA Y COLOCA LOGO2 (INCINEL) PARA LOS PDFs
+                    logo_pdf = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
+                    if os.path.exists(logo_pdf): pdf.image(logo_pdf, x=10, y=8, h=20)
                     
                     pdf.set_y(32); pdf.set_font("Arial", "B", 12)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C"); pdf.ln(2)
@@ -690,6 +692,7 @@ elif st.session_state.current_page == 'reporte_diario':
     area_rd = CENTROS_AREAS.get(centro_rd, "Desconocida"); correo_asignado_rd = CENTROS_CORREOS.get(centro_rd, "sin_correo@blumar.com")
     st.info(f"⚓ Área Asignada: **{area_rd}** | 📬 Correo Central: **{correo_asignado_rd}**")
 
+    # Eliminada la opción 'Día de Descanso'
     estado_turno = st.radio("Estado Operativo del Piloto", ["Operativo (Faena Normal)", "Detenido por Salud / Licencia"], horizontal=True)
 
     col1, col2 = st.columns(2)
@@ -738,13 +741,15 @@ elif st.session_state.current_page == 'reporte_diario':
         st.write("Firma Encargado de Centro")
         firma_encargado_rd = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_e_rd")
 
+    # Botón sin envío de correo para Reporte Diario
     submit_rd = st.button("GENERAR Y GUARDAR REPORTE DIARIO", type="primary", use_container_width=True)
 
     if submit_rd:
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            # Seleccionar logo de Incinel (logo2) para el PDF
+            
+            # BUSCA Y COLOCA LOGO2 (INCINEL) PARA LOS PDFs
             logo_pdf_rd = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
             if os.path.exists(logo_pdf_rd): pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
             
@@ -760,6 +765,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, centro_rd, border=1)
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 6, area_rd, border=1, ln=True)
             
+            # Anchos cuadrados perfectos 30 y 160
             pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 6, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(160, 6, condicion_puerto_rd, border=1, ln=True)
 
             pdf_rd.ln(5); pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
@@ -802,6 +808,13 @@ elif st.session_state.current_page == 'reporte_diario':
                 pdf_rd.image(temp_img_path, x=x_pos, y=pdf_rd.get_y(), w=w_mm, h=h_mm)
                 os.remove(temp_img_path)
 
+            # Pie de página / Marca de Agua
+            pdf_rd.set_auto_page_break(auto=False)
+            pdf_rd.set_y(-12)
+            pdf_rd.set_font("Arial", "I", 8)
+            pdf_rd.set_text_color(128, 128, 128)
+            pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+
             identificador_unico_rd = str(uuid.uuid4())[:8]
             archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
             pdf_rd.output(archivo_pdf_rd)
@@ -823,7 +836,7 @@ elif st.session_state.current_page == 'reporte_diario':
 
             datos_rd = {
                 "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
-                "jaula": jaula_rd, "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
+                "jaula": str(jaula_rd), "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
                 "hora_termino": str(hora_termino_rd), "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube
             }
             try: supabase.table('reportes_history').insert(datos_rd).execute()
@@ -848,7 +861,7 @@ elif st.session_state.current_page == 'reporte_diario':
         with col_down2:
             if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
                 st.session_state.rd_pdf_generado = None
-                # Borramos de la sesión las variables guardadas en los inputs
+                # Borramos de la sesión las variables guardadas en los inputs para dejarlos en blanco
                 for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia"]:
                     if key in st.session_state:
                         del st.session_state[key]
@@ -944,7 +957,7 @@ elif st.session_state.current_page == 'entrega_turno':
             
             try:
                 # SELECCIONAMOS LOGO2 PARA EL PDF DE ENTREGA DE TURNO
-                logo_incinel = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else ""
+                logo_incinel = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
                 archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_incinel, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
