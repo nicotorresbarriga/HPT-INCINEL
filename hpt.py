@@ -799,7 +799,7 @@ elif st.session_state.current_page == 'reporte_diario':
                 x_pos = (210 - w_mm) / 2
                 pdf_rd.image(temp_img_path, x=x_pos, y=pdf_rd.get_y(), w=w_mm, h=h_mm)
                 os.remove(temp_img_path)
-                            if h_mm > 180:
+                  if h_mm > 180:
                                 h_mm = 180
                                 w_mm = h_mm / aspect
                                 
