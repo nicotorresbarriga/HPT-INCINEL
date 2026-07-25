@@ -81,7 +81,7 @@ def init_connection():
     return create_client(url, key)
 
 # ==========================================
-# CONFIGURACIÓN REAL (PRODUCCIÓN)
+# CONFIGURACIÓN DE PRUEBAS (TESTING)
 # ==========================================
 USUARIOS = {
     "Ntorres": "17909926", 
@@ -92,21 +92,21 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
-# CORREOS REALES DEL CENTRO
+# CORREO DE PRUEBAS GENERAL
+CORREO_PRUEBAS = "reportesrovincinel@gmail.com"
+
+# REDIRIGIR TODO AL CORREO DE PRUEBAS
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
+    "Centro Punta Vergara": CORREO_PRUEBAS
 }
 
-# CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    "franco.vidal@blumar.com", 
-    "jonathan.romero@blumar.com"
+    CORREO_PRUEBAS, 
+    CORREO_PRUEBAS
 ]
 
-# CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    "calarcon@incinel.cl", 
-    "ealvarez@incinel.cl"
+    CORREO_PRUEBAS
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
@@ -475,6 +475,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
             with col1:
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
+                tc_rut = st.text_input("RUT Relator")
             with col2:
                 tc_hora = st.selectbox("Hora Difusión", RANGO_HORA_DIFUSION)
                 idx_dur = RANGO_DURACION.index(st.session_state.hpt_data["tc_duracion"]) if st.session_state.hpt_data["tc_duracion"] in RANGO_DURACION else 2
@@ -547,7 +548,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     pdf.ln(2); pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_relator[:35], border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Cargo Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, "Piloto ROV", border=1, ln=True)
+                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "RUT Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_rut[:20], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Tema Difundido:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, tc_nombre[:80], border=1, ln=True)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Fecha y Hora:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, f"{tc_fecha} {tc_hora}", border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_duracion, border=1, ln=True)
