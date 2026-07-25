@@ -713,7 +713,7 @@ elif st.session_state.current_page == 'reporte_diario':
         with col2:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
             st.text_input("Rango Horario", value="N/A", disabled=True)
-            st.markdown("<div style='height: 53px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 63px;'></div>", unsafe_allow_html=True)
             correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
         
         jaula_rd = "N/A"
