@@ -94,19 +94,19 @@ CENTROS_AREAS = {
 
 # CORREOS REALES DEL CENTRO
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
+    "Centro Punta Vergara": "ccentro.puntavergara@blumar.com"
 }
 
 # CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    "franco.vidal@blumar.com", 
-    "jonathan.romero@blumar.com"
+    "ffranco.vidal@blumar.com", 
+    "jjonathan.romero@blumar.com"
 ]
 
 # CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    "calarcon@incinel.cl", 
-    "ealvarez@incinel.cl"
+    "ccalarcon@incinel.cl", 
+    "eealvarez@incinel.cl"
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
