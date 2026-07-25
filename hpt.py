@@ -81,7 +81,7 @@ def init_connection():
     return create_client(url, key)
 
 # ==========================================
-# CONFIGURACIÓN DE PRUEBAS (TESTING)
+# CONFIGURACIÓN REAL (PRODUCCIÓN)
 # ==========================================
 USUARIOS = {
     "Ntorres": "17909926", 
@@ -92,21 +92,21 @@ CENTROS_AREAS = {
     "Centro Punta Vergara": "Area Austral"
 }
 
-# CORREO DE PRUEBAS GENERAL
-CORREO_PRUEBAS = "reportesrovincinel@gmail.com"
-
-# REDIRIGIR TODO AL CORREO DE PRUEBAS
+# CORREOS REALES DEL CENTRO
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": CORREO_PRUEBAS
+    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
 }
 
+# CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    CORREO_PRUEBAS, 
-    CORREO_PRUEBAS
+    "franco.vidal@blumar.com", 
+    "jonathan.romero@blumar.com"
 ]
 
+# CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    CORREO_PRUEBAS
+    "calarcon@incinel.cl", 
+    "ealvarez@incinel.cl"
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
