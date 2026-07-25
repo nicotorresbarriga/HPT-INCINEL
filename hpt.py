@@ -713,7 +713,7 @@ elif st.session_state.current_page == 'reporte_diario':
         with col2:
             st.text_input("Jaula / Balsa", value="N/A (Sin operaciones)", disabled=True)
             st.text_input("Rango Horario", value="N/A", disabled=True)
-            st.markdown("<div style='height: 23px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
             correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
         
         jaula_rd = "N/A"
@@ -727,7 +727,7 @@ elif st.session_state.current_page == 'reporte_diario':
             jaula_rd = st.text_input("Jaula / Balsa Trabajada", key="rd_jaula")
             hora_inicio_rd = st.selectbox("Hora Inicio Rango", RANGOS_INICIO, key="rd_hora_inicio")
             hora_termino_rd = st.selectbox("Hora Término Rango", RANGO_TERMINO, key="rd_hora_termino")
-            st.markdown("<div style='height: 43px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 53px;'></div>", unsafe_allow_html=True)
             correo_adicional_rd = st.text_input("Correos Adicionales (Separados por coma)", placeholder="correo1@blumar.com", key="rd_correos")
             
         tarea_rd = st.text_area("Descripción de la Tarea Realizada", key="rd_tarea")
