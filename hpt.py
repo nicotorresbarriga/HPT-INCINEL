@@ -94,19 +94,19 @@ CENTROS_AREAS = {
 
 # CORREOS REALES DEL CENTRO
 CENTROS_CORREOS = {
-    "Centro Punta Vergara": "ccentro.puntavergara@blumar.com"
+    "Centro Punta Vergara": "centro.puntavergara@blumar.com"
 }
 
 # CORREOS REALES DE PREVENCIÓN BLUMAR
 CORREOS_PREVENCION = [
-    "ffranco.vidal@blumar.com", 
-    "jjonathan.romero@blumar.com"
+    "franco.vidal@blumar.com", 
+    "jonathan.romero@blumar.com"
 ]
 
 # CORREOS OCULTOS DE JEFATURA INCINEL (BCC)
 CORREOS_OCULTOS = [
-    "ccalarcon@incinel.cl", 
-    "eealvarez@incinel.cl"
+    "calarcon@incinel.cl", 
+    "ealvarez@incinel.cl"
 ]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
@@ -744,7 +744,9 @@ elif st.session_state.current_page == 'reporte_diario':
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
-            if os.path.exists("logo.png"): pdf_rd.image("logo.png", x=10, y=8, h=20)
+            # Seleccionar logo de Incinel (logo2) para el PDF
+            logo_pdf_rd = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
+            if os.path.exists(logo_pdf_rd): pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
             
             pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14); pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C"); pdf_rd.ln(3)
             
