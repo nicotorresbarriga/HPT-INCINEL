@@ -801,8 +801,9 @@ elif st.session_state.current_page == 'reporte_diario':
         except:
             correlativo = len(st.session_state.local_reportes_history) + 1
             
-        # Añadimos la hora para evitar duplicidad de folios exactos si se presiona rápido
-        hora_str = datetime.datetime.now().strftime("%H%M")
+        # Añadimos la hora de CHILE para evitar duplicidad de folios exactos
+        hora_chile_folio = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
+        hora_str = hora_chile_folio.strftime("%H%M")
         folio_str = f"N° RD-{fecha_str}-{correlativo:03d}-{hora_str}"
         
         try:
@@ -918,6 +919,7 @@ elif st.session_state.current_page == 'reporte_diario':
                     if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
                     time.sleep(1)
 
+            # Volvemos a agregar 'empresa' y 'folio' para que se guarden en la base de datos
             datos_rd = {
                 "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
                 "jaula": str(jaula_rd), "ponton": ponton_rd, "encargado": encargado_rd, "hora_inicio": str(hora_inicio_rd),
