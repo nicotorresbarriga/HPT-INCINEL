@@ -906,25 +906,25 @@ elif st.session_state.current_page == 'reporte_diario':
                     with open(archivo_pdf_rd, "rb") as f:
                         supabase.storage.from_("documentos").upload(path=archivo_pdf_rd, file=f, file_options={"content-type": "application/pdf"})
                     url_pdf_rd_nube = supabase.storage.from_("documentos").get_public_url(archivo_pdf_rd)
-                break 
-            except Exception as upload_error_rd:
-                if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
-                time.sleep(1)
+                    break 
+                except Exception as upload_error_rd:
+                    if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
+                    time.sleep(1)
 
-        datos_rd = {
-            "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
-            "jaula": str(jaula_rd), "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
-            "hora_termino": str(hora_termino_rd), "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube,
-            "empresa": empresa_rd, "folio": folio_str
-        }
-        try: supabase.table('reportes_history').insert(datos_rd).execute()
-        except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_reportes_history.append(datos_rd)
-        
-        if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
+            datos_rd = {
+                "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
+                "jaula": str(jaula_rd), "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
+                "hora_termino": str(hora_termino_rd), "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube,
+                "empresa": empresa_rd, "folio": folio_str
+            }
+            try: supabase.table('reportes_history').insert(datos_rd).execute()
+            except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_reportes_history.append(datos_rd)
+            
+            if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
             if os.path.exists(f_enc_rd): os.remove(f_enc_rd)
 
             barra_rd.progress(100, text="✅ ¡LISTO!")
-            time.sleep(0.5); barra_rd.empty(); 
+            time.sleep(0.5); barra_rd.empty()
         except Exception as e:
             barra_rd.empty(); st.error(f"Error técnico: {e}")
             
