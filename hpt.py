@@ -451,8 +451,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 else: st.session_state.hpt_data["epp"] = [epp_guantes, epp_chaleco, epp_zapatos, epp_termica, epp_traje, epp_comunicacion, epp_botiquin]; set_step(3); st.rerun()
 
     elif st.session_state.hpt_step == 3:
-        st.subheader("Detalles de Faena y Checklist ERC")
-        tarea = st.text_area("Detalles de faena a realizar", value=st.session_state.hpt_data.get("tarea", ""))
+        st.subheader("Checklist Riesgos Críticos (ERC)")
         estado_erc = st.session_state.hpt_data["erc"]
         st.markdown("**Checklist ERC**")
         col1, col2 = st.columns(2)
@@ -468,11 +467,11 @@ elif st.session_state.current_page == 'hpt_nuevo':
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("⬅️ ATRÁS", key="back3", use_container_width=True):
-                st.session_state.hpt_data.update({"tarea": tarea, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
+                st.session_state.hpt_data.update({"erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
                 set_step(2); st.rerun()
         with col_btn2:
             if st.button("SIGUIENTE ➡️", key="next3", use_container_width=True):
-                st.session_state.hpt_data.update({"tarea": tarea, "erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
+                st.session_state.hpt_data.update({"erc": [erc_izaje, erc_buceo, erc_electricos, erc_caidas, erc_navegacion, erc_atrapamiento]})
                 set_step(4); st.rerun()
 
     elif st.session_state.hpt_step == 4:
