@@ -115,7 +115,6 @@ RANGO_DURACION = ["5 minutos", "10 minutos", "15 minutos", "20 minutos", "25 min
 RANGO_HORA_DIFUSION = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 13) for m in (0, 15, 30, 45) if not (h == 12 and m > 0)]
 
 try:
-    # Solo inicializamos la conexión para el Historial, NO sobrescribimos usuarios/centros.
     supabase = init_connection()
 except Exception as e:
     st.sidebar.warning("Advertencia: Conexión Supabase inactiva.")
@@ -162,19 +161,18 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.set_auto_page_break(auto=True, margin=15) 
     pdf.add_page()
     
-    # Configurar color de borde global a gris suave para un diseño limpio
     pdf.set_draw_color(180, 180, 180)
 
     if os.path.exists(logo_filename):
         pdf.image(logo_filename, x=10, y=10, h=20)
         
     pdf.set_y(35) 
-    pdf.set_font("Helvetica", 'B', 16)
+    pdf.set_font("Helvetica", 'B', 15)
     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
     pdf.cell(190, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=1, ln=True, align='C', fill=True)
     
-    # Sello de Auditoría Inmutable
-    fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Sello de Auditoría Inmutable (Hora Chile)
+    fecha_hora_actual = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S")
     piloto_saliente = datos.get('1. Información General', {}).get('Piloto_Saliente', 'Desconocido')
     pdf.set_font("Helvetica", 'I', 9); pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_saliente}", border=0, ln=True, align='C')
@@ -182,15 +180,15 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     
     for seccion, campos in datos.items():
         if pdf.get_y() > 250: pdf.add_page()
-        pdf.ln(3); pdf.set_font("Helvetica", 'B', 13)
+        pdf.ln(3); pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
         pdf.cell(190, 8, f"  {seccion.upper()}", border=1, ln=True, fill=True)
         for clave, valor in campos.items():
             nombre_campo = clave.replace('_', ' ')
             if pdf.get_y() > 265: pdf.add_page()
-            pdf.set_font("Helvetica", 'B', 11); pdf.set_fill_color(245, 245, 245); pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", 'B', 9); pdf.set_fill_color(245, 245, 245); pdf.set_text_color(0, 0, 0)
             pdf.cell(190, 8, f" {nombre_campo}:", border=1, ln=True, fill=True)
-            pdf.set_font("Helvetica", '', 11)
+            pdf.set_font("Helvetica", '', 9)
             if isinstance(valor, list):
                 for i in range(0, len(valor), 2):
                     item1 = f" - {valor[i]}".encode('latin-1', 'replace').decode('latin-1')
@@ -206,7 +204,7 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     if imagenes_subidas:
         pdf.add_page()
-        pdf.set_font("Helvetica", 'B', 13)
+        pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
         pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=1, ln=True, fill=True); pdf.ln(5)
         pdf.set_text_color(0, 0, 0)
@@ -233,14 +231,14 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     if pdf.get_y() > 230: pdf.add_page()
     y_img = pdf.get_y() + 10
     if firma_path and os.path.exists(firma_path): pdf.image(firma_path, x=65, y=y_img, w=60, h=25)
-    pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 11)
+    pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 9)
     pdf.cell(190, 5, "_______________________", border=0, ln=1, align='C')
     pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
 
     # Pie de página / Marca de Agua
     pdf.set_auto_page_break(auto=False)
     pdf.set_y(-12)
-    pdf.set_font("Helvetica", 'I', 9)
+    pdf.set_font("Helvetica", 'I', 8)
     pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
 
@@ -297,7 +295,7 @@ elif st.session_state.current_page == 'main_menu':
         rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
         
         reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        pilotos_activos = ["Ntorres"] # Solo tu piloto activo para el dashboard
+        pilotos_activos = ["Ntorres"] 
         
         pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
         pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
@@ -357,7 +355,6 @@ elif st.session_state.current_page == 'hpt_menu':
     if st.button("➕ CREAR NUEVA HPT", use_container_width=True): 
         set_step(1)
         st.session_state.hpt_pdf_generado = None 
-        # REINICIAMOS LOS DATOS AQUÍ PARA QUE QUEDE EN BLANCO
         st.session_state.hpt_data = {
             "empresa": "Salmones Blumar Magallanes", "fecha": datetime.date.today(), "hora_inicio": RANGOS_INICIO[2],
             "hora_termino": RANGO_TERMINO[2], "centro": list(CENTROS_AREAS.keys())[0] if CENTROS_AREAS else "",
@@ -517,7 +514,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    # BUSCA Y COLOCA LOGO INCINEL
                     logo_pdf = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
                     if os.path.exists(logo_pdf): pdf.image(logo_pdf, x=10, y=8, h=20)
                     
@@ -526,8 +522,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C", fill=True)
                     
-                    # Sello de Auditoría Inmutable
-                    fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # Sello de Auditoría Inmutable (Hora Chile)
+                    fecha_hora_actual = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S")
                     pdf.set_font("Arial", "I", 9); pdf.set_text_color(128, 128, 128)
                     pdf.cell(0, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {st.session_state.current_user}", border=0, ln=True, align="C")
                     pdf.ln(2)
@@ -601,7 +597,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     if data.get('evidencia_puerto'):
                         pdf.add_page()
                         pdf.set_draw_color(180, 180, 180)
-                        pdf.set_font("Arial", "B", 11)
+                        pdf.set_font("Arial", "B", 10)
                         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                         pdf.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
                         pdf.set_text_color(0, 0, 0)
@@ -630,7 +626,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     # Pie de página / Marca de Agua
                     pdf.set_auto_page_break(auto=False)
                     pdf.set_y(-12)
-                    pdf.set_font("Arial", "I", 9)
+                    pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
                     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
@@ -744,6 +740,7 @@ elif st.session_state.current_page == 'reporte_diario':
     with col1:
         fecha_rd = st.date_input("Fecha", value=datetime.date.today())
         piloto_rd = st.text_input("Nombre de Piloto", value=st.session_state.get("rd_piloto", st.session_state.current_user), key="rd_piloto")
+        encargado_rd = st.text_input("Encargado de Centro", key="rd_encargado")
         condicion_puerto_rd = st.selectbox("Condición de Puerto", ["Abierto", "Cerrado para naves menores", "Cerrado total"], key="rd_puerto")
         st.link_button("🌐 Revisar SITPORT (Directemar)", "https://sitport.directemar.cl/#/general", use_container_width=True)
         
@@ -752,7 +749,6 @@ elif st.session_state.current_page == 'reporte_diario':
             evidencia_img_rd = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'], key="rd_evidencia")
 
         ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
-        encargado_rd = st.text_input("Encargado del Centro", key="rd_encargado")
 
     if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
         st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y guarde para mantener la trazabilidad.")
@@ -787,23 +783,22 @@ elif st.session_state.current_page == 'reporte_diario':
         st.write("Firma Encargado de Centro")
         firma_encargado_rd = st_canvas(stroke_width=2, stroke_color="#000", background_color="#FFF", height=150, width=300, key="firma_e_rd")
 
-    # Botón sin envío de correo para Reporte Diario
     submit_rd = st.button("GENERAR Y GUARDAR REPORTE DIARIO", type="primary", use_container_width=True)
 
     if submit_rd:
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
         
-        # Generar Folio Correlativo (Cuenta reportes históricos)
-        fecha_str = datetime.date.today().strftime("%Y%m%d")
+        # Sincronizar todo el Reporte Diario con la Hora de Chile
+        hora_chile = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
+        fecha_str = hora_chile.strftime("%Y%m%d")
+        hora_str = hora_chile.strftime("%H%M")
+        
         try:
-            res_count = supabase.table('reportes_history').select('id').execute()
-            correlativo = len(res_count.data) + 1
+            res_count = supabase.table('reportes_history').select('id', count='exact').execute()
+            correlativo = res_count.count + 1
         except:
             correlativo = len(st.session_state.local_reportes_history) + 1
             
-        # Añadimos la hora de CHILE para evitar duplicidad de folios exactos
-        hora_chile_folio = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
-        hora_str = hora_chile_folio.strftime("%H%M")
         folio_str = f"N° RD-{fecha_str}-{correlativo:03d}-{hora_str}"
         
         try:
@@ -813,12 +808,12 @@ elif st.session_state.current_page == 'reporte_diario':
             logo_pdf_rd = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
             if os.path.exists(logo_pdf_rd): pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
             
-            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 15)
+            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C", fill=True)
             
             # Sello de Auditoría e Info del Folio
-            fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            fecha_hora_actual = hora_chile.strftime("%Y-%m-%d %H:%M:%S")
             pdf_rd.set_font("Arial", "I", 9); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 6, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
             pdf_rd.ln(3)
@@ -836,11 +831,11 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, empresa_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, centro_rd, border=1, ln=True)
 
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, encargado_rd[:35] if encargado_rd else "N/A", border=1)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, correo_asignado_rd[:35], border=1, ln=True)
+
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, area_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, condicion_puerto_rd, border=1, ln=True)
-
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(160, 8, encargado_rd[:80], border=1, ln=True)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(160, 8, correo_asignado_rd[:80], border=1, ln=True)
 
             pdf_rd.ln(5)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -867,7 +862,7 @@ elif st.session_state.current_page == 'reporte_diario':
             if evidencia_img_rd:
                 pdf_rd.add_page()
                 pdf_rd.set_draw_color(180, 180, 180)
-                pdf_rd.set_font("Arial", "B", 11)
+                pdf_rd.set_font("Arial", "B", 10)
                 pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
                 pdf_rd.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
                 pdf_rd.set_text_color(0, 0, 0)
@@ -896,7 +891,7 @@ elif st.session_state.current_page == 'reporte_diario':
             # Pie de página / Marca de Agua
             pdf_rd.set_auto_page_break(auto=False)
             pdf_rd.set_y(-12)
-            pdf_rd.set_font("Arial", "I", 9)
+            pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
@@ -919,15 +914,17 @@ elif st.session_state.current_page == 'reporte_diario':
                     if intento == 2: st.error(f"⚠️ Error al subir Reporte a Supabase: {upload_error_rd}")
                     time.sleep(1)
 
-            # Volvemos a agregar 'empresa' y 'folio' para que se guarden en la base de datos
             datos_rd = {
                 "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
-                "jaula": str(jaula_rd), "ponton": ponton_rd, "encargado": encargado_rd, "hora_inicio": str(hora_inicio_rd),
+                "jaula": str(jaula_rd), "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
                 "hora_termino": str(hora_termino_rd), "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube,
-                "empresa": empresa_rd, "folio": folio_str
+                "empresa": empresa_rd, "folio": folio_str, "encargado": encargado_rd
             }
-            try: supabase.table('reportes_history').insert(datos_rd).execute()
-            except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_reportes_history.append(datos_rd)
+            try: 
+                supabase.table('reportes_history').insert(datos_rd).execute()
+            except Exception as db_err: 
+                st.error(f"⚠️ Error al guardar en BD: {db_err}")
+                st.session_state.local_reportes_history.append(datos_rd)
             
             if os.path.exists(f_pil_rd): os.remove(f_pil_rd)
             if os.path.exists(f_enc_rd): os.remove(f_enc_rd)
@@ -948,7 +945,6 @@ elif st.session_state.current_page == 'reporte_diario':
         with col_down2:
             if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
                 st.session_state.rd_pdf_generado = None
-                # Borramos de la sesión las variables guardadas en los inputs para dejarlos en blanco
                 for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia", "rd_encargado"]:
                     if key in st.session_state:
                         del st.session_state[key]
@@ -1043,7 +1039,6 @@ elif st.session_state.current_page == 'entrega_turno':
             nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
             
             try:
-                # SELECCIONAMOS LOGO2 PARA EL PDF DE ENTREGA DE TURNO
                 logo_incinel = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
                 archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_incinel, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
                 
