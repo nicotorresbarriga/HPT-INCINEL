@@ -169,28 +169,28 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
         pdf.image(logo_filename, x=10, y=10, h=20)
         
     pdf.set_y(35) 
-    pdf.set_font("Helvetica", 'B', 15)
-    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255) 
+    pdf.set_font("Helvetica", 'B', 16)
+    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
     pdf.cell(190, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=1, ln=True, align='C', fill=True)
     
     # Sello de Auditoría Inmutable
     fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     piloto_saliente = datos.get('1. Información General', {}).get('Piloto_Saliente', 'Desconocido')
-    pdf.set_font("Helvetica", 'I', 8); pdf.set_text_color(128, 128, 128)
+    pdf.set_font("Helvetica", 'I', 9); pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_saliente}", border=0, ln=True, align='C')
     pdf.ln(2)
     
     for seccion, campos in datos.items():
         if pdf.get_y() > 250: pdf.add_page()
-        pdf.ln(3); pdf.set_font("Helvetica", 'B', 12)
-        pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255) 
+        pdf.ln(3); pdf.set_font("Helvetica", 'B', 13)
+        pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
         pdf.cell(190, 8, f"  {seccion.upper()}", border=1, ln=True, fill=True)
         for clave, valor in campos.items():
             nombre_campo = clave.replace('_', ' ')
             if pdf.get_y() > 265: pdf.add_page()
-            pdf.set_font("Helvetica", 'B', 10); pdf.set_fill_color(245, 245, 245); pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", 'B', 11); pdf.set_fill_color(245, 245, 245); pdf.set_text_color(0, 0, 0)
             pdf.cell(190, 8, f" {nombre_campo}:", border=1, ln=True, fill=True)
-            pdf.set_font("Helvetica", '', 10)
+            pdf.set_font("Helvetica", '', 11)
             if isinstance(valor, list):
                 for i in range(0, len(valor), 2):
                     item1 = f" - {valor[i]}".encode('latin-1', 'replace').decode('latin-1')
@@ -206,8 +206,8 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     if imagenes_subidas:
         pdf.add_page()
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", 'B', 13)
+        pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
         pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=1, ln=True, fill=True); pdf.ln(5)
         pdf.set_text_color(0, 0, 0)
         col_img = 0; row_y = pdf.get_y(); max_h_row = 0
@@ -233,14 +233,14 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     if pdf.get_y() > 230: pdf.add_page()
     y_img = pdf.get_y() + 10
     if firma_path and os.path.exists(firma_path): pdf.image(firma_path, x=65, y=y_img, w=60, h=25)
-    pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 10)
+    pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 11)
     pdf.cell(190, 5, "_______________________", border=0, ln=1, align='C')
     pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
 
     # Pie de página / Marca de Agua
     pdf.set_auto_page_break(auto=False)
     pdf.set_y(-12)
-    pdf.set_font("Helvetica", 'I', 8)
+    pdf.set_font("Helvetica", 'I', 9)
     pdf.set_text_color(128, 128, 128)
     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
 
@@ -517,50 +517,50 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    # BUSCA Y COLOCA LOGO
-                    logo_pdf = "logo.png" if os.path.exists("logo.png") else "logo.jpg"
+                    # BUSCA Y COLOCA LOGO INCINEL
+                    logo_pdf = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
                     if os.path.exists(logo_pdf): pdf.image(logo_pdf, x=10, y=8, h=20)
                     
                     pdf.set_draw_color(180, 180, 180)
-                    pdf.set_y(32); pdf.set_font("Arial", "B", 12)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
+                    pdf.set_y(32); pdf.set_font("Arial", "B", 13)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=1, ln=True, align="C", fill=True)
                     
                     # Sello de Auditoría Inmutable
                     fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    pdf.set_font("Arial", "I", 8); pdf.set_text_color(128, 128, 128)
+                    pdf.set_font("Arial", "I", 9); pdf.set_text_color(128, 128, 128)
                     pdf.cell(0, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {st.session_state.current_user}", border=0, ln=True, align="C")
                     pdf.ln(2)
 
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, "1. DATOS OPERATIVOS", border=1, ln=True, fill=True)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "1. DATOS OPERATIVOS", border=1, ln=True, fill=True)
                     pdf.set_text_color(0, 0, 0)
                     
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, data.get('empresa', '')[:35], border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Centro de Cultivo:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, data.get('centro', '')[:35], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Fecha Maniobra:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, str(data.get('fecha', '')), border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Area Geografica:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, data.get('area', '')[:35], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Hora Inicio Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, str(data.get('hora_inicio', '')), border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Hora Termino Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, str(data.get('hora_termino', '')), border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Nombre Ponton:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, data.get('ponton', '')[:35], border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Condicion Puerto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, data.get('condicion_puerto', '')[:35], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Encargado Centro:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 8, data.get('encargado', '')[:80], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Prevencionista 1:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 8, CORREOS_PREVENCION[0], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Prevencionista 2:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 8, CORREOS_PREVENCION[1], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Correo Centro:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 8, data.get('correo', '')[:80], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('empresa', '')[:35], border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Centro de Cultivo:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('centro', '')[:35], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Fecha Maniobra:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, str(data.get('fecha', '')), border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Area Geografica:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('area', '')[:35], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Hora Inicio Rango:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, str(data.get('hora_inicio', '')), border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Hora Termino Rango:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, str(data.get('hora_termino', '')), border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Nombre Ponton:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('ponton', '')[:35], border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Condicion Puerto:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('condicion_puerto', '')[:35], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Encargado Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, data.get('encargado', '')[:80], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Prevencionista 1:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, CORREOS_PREVENCION[0], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Prevencionista 2:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, CORREOS_PREVENCION[1], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Correo Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, data.get('correo', '')[:80], border=1, ln=True)
                     
-                    pdf.set_font("Arial", "B", 8)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 9)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(190, 8, "Faena Primaria y Detalles Especificos:", border=1, ln=True, fill=True)
                     pdf.set_text_color(0, 0, 0)
-                    pdf.set_font("Arial", "", 8)
+                    pdf.set_font("Arial", "", 9)
                     texto_tarea = f"FAENA: {data.get('faena', '')}\nDETALLES: {data.get('tarea', '')}"
                     pdf.multi_cell(190, 6, texto_tarea, border=1)
 
                     pdf.ln(2)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=1, ln=True, fill=True)
-                    pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=1, ln=True, fill=True)
+                    pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 9)
                     epp_labels = ["Guantes", "Chaleco", "Zapatos", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
                     epp_vals = data.get('epp', []); epp_seleccionados = [epp_labels[i] for i in range(len(epp_labels)) if i < len(epp_vals) and epp_vals[i]]
                     if not epp_seleccionados: pdf.cell(190, 8, "Ningun EPP registrado o Aplica (Puerto Cerrado Total).", border=1, ln=True)
@@ -568,9 +568,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         for i, epp in enumerate(epp_seleccionados): pdf.cell(190/3, 8, f"[ X ] {epp}", border=1, ln=1 if (i + 1) % 3 == 0 or i == len(epp_seleccionados) - 1 else 0)
 
                     pdf.ln(2)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, "3. RIESGOS CRITICOS EVALUADOS (ERC)", border=1, ln=True, fill=True)
-                    pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "3. RIESGOS CRITICOS EVALUADOS (ERC)", border=1, ln=True, fill=True)
+                    pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 9)
                     erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Navegacion", "Atrapamiento"]
                     erc_vals = data.get('erc', []); erc_seleccionados = [erc_labels[i] for i in range(len(erc_labels)) if i < len(erc_vals) and erc_vals[i]]
                     if not erc_seleccionados: pdf.cell(190, 8, "Ningun Riesgo seleccionado o Aplica (Puerto Cerrado Total).", border=1, ln=True)
@@ -578,31 +578,31 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         for i, erc in enumerate(erc_seleccionados): pdf.cell(190/2, 8, f"[ X ] {erc}", border=1, ln=1 if (i + 1) % 2 == 0 or i == len(erc_seleccionados) - 1 else 0)
 
                     pdf.ln(2)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "4. DIFUSION Y TOMA DE CONOCIMIENTO", border=1, ln=True, fill=True)
                     pdf.set_text_color(0, 0, 0)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, tc_relator[:35], border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "RUT Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, tc_rut[:20], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Tema Difundido:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 8, tc_nombre[:80], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Fecha y Hora:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, f"{tc_fecha} {tc_hora}", border=1)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(35, 8, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 8, tc_duracion, border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, tc_relator[:35], border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "RUT Relator:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, tc_rut[:20], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Tema Difundido:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, tc_nombre[:80], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Fecha y Hora:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, f"{tc_fecha} {tc_hora}", border=1)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, tc_duracion, border=1, ln=True)
 
                     pdf.ln(2)
-                    pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+                    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "5. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
                     pdf.set_text_color(0, 0, 0)
                     pdf.cell(95, 22, "", border=1); pdf.cell(95, 22, "", border=1, ln=True)
                     id_firmas = uuid.uuid4().hex[:8]; f_serv = f"f_serv_{id_firmas}.jpg"; f_enc = f"f_encargado_{id_firmas}.jpg"
                     if procesar_firma(firma_sup_serv, f_serv): pdf.image(f_serv, x=35, y=pdf.get_y()-20, w=45, h=15)
                     if procesar_firma(firma_encargado, f_enc): pdf.image(f_enc, x=130, y=pdf.get_y()-20, w=45, h=15)
-                    pdf.set_font("Arial", "B", 8); pdf.cell(95, 8, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 8, "Firma Encargado de Centro", border=1, ln=True, align="C")
+                    pdf.set_font("Arial", "B", 9); pdf.cell(95, 8, "Firma Supervisor Servicio", border=1, align="C"); pdf.cell(95, 8, "Firma Encargado de Centro", border=1, ln=True, align="C")
 
                     # Agregar foto de evidencia de puerto si existe
                     if data.get('evidencia_puerto'):
                         pdf.add_page()
                         pdf.set_draw_color(180, 180, 180)
-                        pdf.set_font("Arial", "B", 10)
-                        pdf.set_fill_color(0, 35, 83); pdf.set_text_color(255, 255, 255)
+                        pdf.set_font("Arial", "B", 11)
+                        pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                         pdf.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
                         pdf.set_text_color(0, 0, 0)
                         pdf.ln(5)
@@ -630,7 +630,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     # Pie de página / Marca de Agua
                     pdf.set_auto_page_break(auto=False)
                     pdf.set_y(-12)
-                    pdf.set_font("Arial", "I", 8)
+                    pdf.set_font("Arial", "I", 9)
                     pdf.set_text_color(128, 128, 128)
                     pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
@@ -752,6 +752,7 @@ elif st.session_state.current_page == 'reporte_diario':
             evidencia_img_rd = st.file_uploader("📸 Evidencia fotográfica de puerto cerrado", type=['png', 'jpg', 'jpeg'], key="rd_evidencia")
 
         ponton_rd = st.text_input("Nombre Pontón", key="rd_ponton")
+        encargado_rd = st.text_input("Encargado del Centro", key="rd_encargado")
 
     if estado_turno != "Operativo (Faena Normal)" or condicion_puerto_rd == "Cerrado total":
         st.warning("⚠️ **Modo Express Activado:** Se omitirán los detalles de faena por inactividad. Solo firme y guarde para mantener la trazabilidad.")
@@ -795,72 +796,78 @@ elif st.session_state.current_page == 'reporte_diario':
         # Generar Folio Correlativo (Cuenta reportes históricos)
         fecha_str = datetime.date.today().strftime("%Y%m%d")
         try:
-            res_count = supabase.table('reportes_history').select('id', count='exact').execute()
-            correlativo = res_count.count + 1
+            res_count = supabase.table('reportes_history').select('id').execute()
+            correlativo = len(res_count.data) + 1
         except:
             correlativo = len(st.session_state.local_reportes_history) + 1
-        folio_str = f"N° RD-{fecha_str}-{correlativo:04d}"
+            
+        # Añadimos la hora para evitar duplicidad de folios exactos si se presiona rápido
+        hora_str = datetime.datetime.now().strftime("%H%M")
+        folio_str = f"N° RD-{fecha_str}-{correlativo:03d}-{hora_str}"
         
         try:
             pdf_rd = FPDF(); pdf_rd.add_page()
             pdf_rd.set_draw_color(180, 180, 180)
             
-            logo_pdf_rd = "logo.png" if os.path.exists("logo.png") else "logo.jpg"
+            logo_pdf_rd = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
             if os.path.exists(logo_pdf_rd): pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
             
-            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14)
-            pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
+            pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 15)
+            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.cell(0, 10, "REPORTE DIARIO DE OPERACIONES - ROV", border=1, ln=True, align="C", fill=True)
             
             # Sello de Auditoría e Info del Folio
             fecha_hora_actual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            pdf_rd.set_font("Arial", "I", 8); pdf_rd.set_text_color(128, 128, 128)
+            pdf_rd.set_font("Arial", "I", 9); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 6, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
             pdf_rd.ln(3)
             
-            pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 8, "1. DATOS GENERALES", border=1, ln=True, fill=True)
+            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
+            pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "1. DATOS GENERALES", border=1, ln=True, fill=True)
             pdf_rd.set_text_color(0, 0, 0)
             
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, str(fecha_rd), border=1)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Rango Horario:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, f"{hora_inicio_rd} - {hora_termino_rd}", border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Fecha:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, str(fecha_rd), border=1)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Rango Horario:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, f"{hora_inicio_rd} - {hora_termino_rd}", border=1, ln=True)
             
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Piloto ROV:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, piloto_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, ponton_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Piloto ROV:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, piloto_rd, border=1)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, ponton_rd, border=1, ln=True)
             
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, empresa_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, centro_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, empresa_rd, border=1)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, centro_rd, border=1, ln=True)
 
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, area_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(30, 8, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(65, 8, condicion_puerto_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, area_rd, border=1)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Condicion Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(65, 8, condicion_puerto_rd, border=1, ln=True)
+
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(160, 8, encargado_rd[:80], border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(30, 8, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(160, 8, correo_asignado_rd[:80], border=1, ln=True)
 
             pdf_rd.ln(5)
-            pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 8, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
+            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
+            pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "2. DETALLE OPERATIVO", border=1, ln=True, fill=True)
             pdf_rd.cell(190, 8, "Estructura Intervenida:", border=1, ln=True, fill=True)
-            pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 8); pdf_rd.cell(190, 8, str(jaula_rd), border=1, ln=True)
+            pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(190, 8, str(jaula_rd), border=1, ln=True)
             
-            pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True)
-            pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 8)
+            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=1, ln=True, fill=True)
+            pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9)
             pdf_rd.multi_cell(190, 6, tarea_rd, border=1)
             
             pdf_rd.ln(4)
-            pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 8, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
+            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
+            pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "3. CUADRO DE FIRMAS RESPONSABLES", border=1, ln=True, fill=True)
             pdf_rd.set_text_color(0, 0, 0)
             pdf_rd.cell(95, 22, "", border=1); pdf_rd.cell(95, 22, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
             if procesar_firma(firma_piloto_rd, f_pil_rd): pdf_rd.image(f_pil_rd, x=35, y=pdf_rd.get_y()-20, w=45, h=15)
             if procesar_firma(firma_encargado_rd, f_enc_rd): pdf_rd.image(f_enc_rd, x=130, y=pdf_rd.get_y()-20, w=45, h=15)
-            pdf_rd.set_font("Arial", "B", 8); pdf_rd.cell(95, 8, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 8, "Firma Encargado de Centro", border=1, ln=True, align="C")
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(95, 8, "Firma Piloto ROV", border=1, align="C"); pdf_rd.cell(95, 8, "Firma Encargado de Centro", border=1, ln=True, align="C")
             
             # Agregar foto de evidencia de puerto si existe
             if evidencia_img_rd:
                 pdf_rd.add_page()
                 pdf_rd.set_draw_color(180, 180, 180)
-                pdf_rd.set_font("Arial", "B", 10)
-                pdf_rd.set_fill_color(0, 35, 83); pdf_rd.set_text_color(255, 255, 255)
+                pdf_rd.set_font("Arial", "B", 11)
+                pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
                 pdf_rd.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=1, ln=True, fill=True)
                 pdf_rd.set_text_color(0, 0, 0)
                 pdf_rd.ln(5)
@@ -888,7 +895,7 @@ elif st.session_state.current_page == 'reporte_diario':
             # Pie de página / Marca de Agua
             pdf_rd.set_auto_page_break(auto=False)
             pdf_rd.set_y(-12)
-            pdf_rd.set_font("Arial", "I", 8)
+            pdf_rd.set_font("Arial", "I", 9)
             pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
@@ -913,7 +920,7 @@ elif st.session_state.current_page == 'reporte_diario':
 
             datos_rd = {
                 "fecha": str(fecha_rd), "usuario": piloto_rd, "centro": centro_rd, "area": area_rd,
-                "jaula": str(jaula_rd), "ponton": ponton_rd, "hora_inicio": str(hora_inicio_rd),
+                "jaula": str(jaula_rd), "ponton": ponton_rd, "encargado": encargado_rd, "hora_inicio": str(hora_inicio_rd),
                 "hora_termino": str(hora_termino_rd), "condicion_puerto": condicion_puerto_rd, "tarea": tarea_rd, "url_documento": url_pdf_rd_nube,
                 "empresa": empresa_rd, "folio": folio_str
             }
@@ -940,7 +947,7 @@ elif st.session_state.current_page == 'reporte_diario':
             if st.button("📝 CREAR NUEVO REPORTE DIARIO", type="secondary", use_container_width=True):
                 st.session_state.rd_pdf_generado = None
                 # Borramos de la sesión las variables guardadas en los inputs para dejarlos en blanco
-                for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia"]:
+                for key in ["rd_ponton", "rd_jaula", "rd_tarea", "rd_correos", "rd_evidencia", "rd_encargado"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
