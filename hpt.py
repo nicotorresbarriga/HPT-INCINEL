@@ -249,6 +249,7 @@ if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([3, 2, 3])
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
+        # Logo en la plataforma
         if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
         
@@ -412,13 +413,15 @@ elif st.session_state.current_page == 'hpt_nuevo':
         if condicion_puerto == "Cerrado total":
             st.warning("⚠️ **Puerto Cerrado Total:** Se saltarán los pasos de EPP y ERC. La faena se registra como 'Sin faena'.")
             faena = "Sin faena"
+            tarea = "Puerto Cerrado Total. Sin operaciones."
         else:
             idx_faena = opciones_faena.index(st.session_state.hpt_data.get("faena", opciones_faena[0])) if st.session_state.hpt_data.get("faena") in opciones_faena else 0
             faena = st.selectbox("Faena a realizar", opciones_faena, index=idx_faena)
+            tarea = st.text_area("Detalles de faena y lugar", value=st.session_state.hpt_data.get("tarea", ""))
         
         if st.button("SIGUIENTE ➡️", use_container_width=True):
             img_bytes = evidencia_img.getvalue() if evidencia_img else st.session_state.hpt_data.get("evidencia_puerto")
-            st.session_state.hpt_data.update({"empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio, "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo, "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena, "evidencia_puerto": img_bytes})
+            st.session_state.hpt_data.update({"empresa": empresa, "fecha": fecha, "hora_inicio": hora_inicio, "hora_termino": hora_termino, "centro": centro, "area": area_asignada, "correo": correo, "encargado": encargado, "ponton": ponton, "condicion_puerto": condicion_puerto, "faena": faena, "tarea": tarea, "evidencia_puerto": img_bytes})
             if condicion_puerto == "Cerrado total":
                 set_step(4) 
             else:
@@ -513,6 +516,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
+                    # BUSCA LOGO INCINEL PARA PDF
                     logo_pdf = "logo2.png" if os.path.exists("logo2.png") else "logo2.jpg" if os.path.exists("logo2.jpg") else "logo.png"
                     if os.path.exists(logo_pdf): pdf.image(logo_pdf, x=10, y=8, h=20)
                     
@@ -540,9 +544,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Nombre Ponton:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('ponton', '')[:35], border=1)
                     pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Condicion Puerto:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, 8, data.get('condicion_puerto', '')[:35], border=1, ln=True)
                     pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Encargado Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, data.get('encargado', '')[:80], border=1, ln=True)
+                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Correo Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, data.get('correo', '')[:80], border=1, ln=True)
                     pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Prevencionista 1:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, CORREOS_PREVENCION[0], border=1, ln=True)
                     pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Prevencionista 2:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, CORREOS_PREVENCION[1], border=1, ln=True)
-                    pdf.set_font("Arial", "B", 9); pdf.cell(35, 8, "Correo Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, 8, data.get('correo', '')[:80], border=1, ln=True)
                     
                     pdf.set_font("Arial", "B", 9)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
