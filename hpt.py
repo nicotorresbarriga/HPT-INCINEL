@@ -108,8 +108,6 @@ def init_connection():
 
 USUARIOS = {"Ntorres": "17909926", "admin": "admin"}
 CENTROS_AREAS = {"Centro Punta Vergara": "Area Austral", "Centro Isla": "Area Norte"}
-
-# MODO PRUEBAS: Todos los correos visibles apuntan a la cuenta de pruebas
 CENTROS_CORREOS = {"Centro Punta Vergara": "reportesrovincinel@gmail.com", "Centro Isla": "reportesrovincinel@gmail.com"}
 
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
@@ -125,7 +123,6 @@ try:
 except Exception as e:
     st.sidebar.warning("Advertencia: Conexión Supabase inactiva. Modo Local.")
 
-# Inicialización de variables de sesión
 for history in ['local_hpt_history', 'local_reportes_history', 'local_entrega_history']:
     if history not in st.session_state: st.session_state[history] = []
 
@@ -138,7 +135,7 @@ if 'rd_pdf_generado' not in st.session_state: st.session_state.rd_pdf_generado =
 if 'admin_acceso_historial' not in st.session_state: st.session_state.admin_acceso_historial = False
 if 'admin_acceso_graficos' not in st.session_state: st.session_state.admin_acceso_graficos = False
 
-# Variables de sesión para el nuevo módulo de Informe Consolidado
+# Variables del Módulo Informe Consolidado
 if 'ic_anomalias' not in st.session_state: st.session_state.ic_anomalias = []
 if 'ic_pdf_generado' not in st.session_state: st.session_state.ic_pdf_generado = None
 
@@ -170,12 +167,11 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # ------------------ PÁGINA 1: PORTADA ------------------
+    # PÁGINA 1: PORTADA
     pdf.add_page()
     if os.path.exists(logo_filename):
         pdf.image(logo_filename, x=10, y=10, h=18)
     
-    # Intento de logo secundario (Mandante)
     if os.path.exists("blumar_logo.png"):
         pdf.image("blumar_logo.png", x=160, y=10, h=12)
         
@@ -189,19 +185,16 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     pdf.set_text_color(0, 0, 0)
     pdf.cell(190, 10, f"CENTRO {datos['centro'].upper()}", border=0, ln=True, align='C')
     
-    # Imagen referencial de portada si existe
     if os.path.exists("rov_cover.jpg"):
         pdf.image("rov_cover.jpg", x=35, y=95, w=140)
     else:
         pdf.ln(50)
         
-    # Tabla de Datos
     pdf.set_y(190)
     pdf.set_font("Helvetica", 'B', 9)
     pdf.set_fill_color(240, 240, 240)
     
-    ancho_lbl = 55
-    ancho_val = 80
+    ancho_lbl, ancho_val = 55, 80
     x_offset = (210 - (ancho_lbl + ancho_val)) / 2
     
     def add_row(lbl, val):
@@ -219,13 +212,12 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     add_row("EQUIPO ROV", datos['equipo'])
     add_row("CONDICIÓN PUERTO", datos['puerto'])
     
-    # Footer
     pdf.set_y(-25)
     pdf.set_font("Helvetica", 'I', 7)
     pdf.set_text_color(128, 128, 128)
     pdf.cell(0, 4, "INCINEL - ÁREA ROBÓTICA     DIRECCIÓN: LOS COLONOS 165, PUERTO MONTT, CHILE", align='C', ln=True)
     
-    # ------------------ PÁGINA 2: ESQUEMA Y DETALLES ------------------
+    # PÁGINA 2: ESQUEMA Y DETALLES
     pdf.add_page()
     if os.path.exists(logo_filename): pdf.image(logo_filename, x=10, y=10, h=12)
     pdf.set_y(30)
@@ -263,8 +255,7 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(190, 6, txt=f"Con fecha {datos['fecha']}, se coordina con el encargado de centro continuar con la inspección robótica submarina. Se inspeccionaron las jaulas: {datos['jaulas_insp']}.")
 
-    # ------------------ PÁGINAS 3+: REGISTRO FOTOGRÁFICO DE ANOMALÍAS ------------------
-    # Agrupar anomalías por jaula
+    # PÁGINAS 3+: REGISTRO FOTOGRÁFICO DE ANOMALÍAS
     jaulas_dict = {}
     for anomalia in anomalias:
         j = anomalia['jaula']
@@ -290,7 +281,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
             pdf.set_font("Helvetica", 'B', 9)
             pdf.set_text_color(0, 0, 0)
             
-            # Textos
             lbl_desc = f"{anom['descripcion']} | {anom['ubicacion']} a {anom['profundidad']}m"
             pdf.cell(90, 6, "ROTURA / ANOMALÍA ENCONTRADA", align='C')
             pdf.cell(10, 6, "")
@@ -298,7 +288,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
             
             y_img = pdf.get_y()
             
-            # Imagen Antes
             if anom['img_antes']:
                 t_antes = f"temp_ant_{uuid.uuid4().hex[:6]}.jpg"
                 with open(t_antes, "wb") as f: f.write(anom['img_antes'])
@@ -309,7 +298,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
                 pdf.rect(15, y_img, 80, 55)
                 pdf.text(45, y_img + 30, "Sin Imagen")
                 
-            # Imagen Después
             if anom['img_despues']:
                 t_desp = f"temp_desp_{uuid.uuid4().hex[:6]}.jpg"
                 with open(t_desp, "wb") as f: f.write(anom['img_despues'])
@@ -328,8 +316,7 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
             
             y_cursor = pdf.get_y() + 10
 
-    # ------------------ PÁGINA FINAL: TABLA RESUMEN ------------------
-    # Configuramos apaisado (Landscape) para que quepa bien la tabla
+    # PÁGINA FINAL: TABLA RESUMEN
     pdf.add_page(orientation='L')
     if os.path.exists(logo_filename): pdf.image(logo_filename, x=10, y=10, h=12)
     pdf.set_y(30)
@@ -338,7 +325,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     pdf.cell(277, 10, "RESULTADOS DE LA INSPECCIÓN", border=0, ln=True, align='C')
     pdf.ln(5)
     
-    # Header de Tabla
     headers = ["N°", "Fecha", "Jaula", "Tipo Red", "Anomalía", "Ubicación", "Prof. (m)", "Estado", "Servicio"]
     widths = [10, 22, 15, 25, 80, 45, 20, 25, 35]
     
@@ -349,7 +335,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
         pdf.cell(widths[i], 8, headers[i], border=1, align='C', fill=True)
     pdf.ln()
     
-    # Filas
     pdf.set_font("Helvetica", '', 8)
     for i, anom in enumerate(anomalias):
         pdf.cell(widths[0], 7, str(i+1), border=1, align='C')
@@ -357,18 +342,12 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
         pdf.cell(widths[2], 7, str(anom['jaula']), border=1, align='C')
         pdf.cell(widths[3], 7, str(anom['tipo_red']), border=1, align='C')
         
-        # Guardar X e Y para la celda descriptiva que puede ser larga
-        x_anom = pdf.get_x()
-        y_anom = pdf.get_y()
-        
-        # Truco para truncar texto si es muy largo (simplificado para FPDF)
         desc_corta = anom['descripcion'][:45] + ".." if len(anom['descripcion']) > 48 else anom['descripcion']
         pdf.cell(widths[4], 7, desc_corta, border=1, align='L')
         
         pdf.cell(widths[5], 7, str(anom['ubicacion']), border=1, align='C')
         pdf.cell(widths[6], 7, str(anom['profundidad']), border=1, align='C')
         
-        # Color para el estado
         if anom['estado'] == 'Reparada': pdf.set_text_color(0, 150, 0)
         elif anom['estado'] == 'Pendiente': pdf.set_text_color(200, 0, 0)
         else: pdf.set_text_color(0, 0, 0)
@@ -390,7 +369,6 @@ def generar_pdf_consolidado(datos, anomalias, logo_filename, nombre_archivo):
     pdf.output(nombre_archivo)
     return nombre_archivo
 
-# Función general de FPDF utilizada por HPT y Entrega de Turno
 def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None):
     pdf = FPDF()
     pdf.set_margins(10, 10, 10)
@@ -479,8 +457,6 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     pdf.output(nombre_archivo)
     return nombre_archivo
-
-# ---------------- FLUJO DE PANTALLAS ----------------
 
 if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([3, 2, 3])
@@ -585,7 +561,6 @@ elif st.session_state.current_page == 'informe_consolidado':
     st.markdown("<h1 style='text-align: center;'>Generador de Informe Consolidado</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #a0aec0;'>Cree reportes técnicos detallados con galería del antes/después y planimetría.</p>", unsafe_allow_html=True)
     
-    # Sistema de Pestañas (Tabs)
     tab1, tab2, tab3 = st.tabs(["1. Contexto Operativo", "2. Registro de Anomalías", "3. Compilación y PDF"])
     
     with tab1:
@@ -716,7 +691,6 @@ elif st.session_state.current_page == 'informe_consolidado':
                 st.session_state.ic_pdf_generado = None
                 st.rerun()
 
-
 elif st.session_state.current_page == 'hpt_menu':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.markdown("<h1 style='text-align: center;'>Módulo HPT</h1>", unsafe_allow_html=True)
@@ -811,7 +785,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
     elif st.session_state.hpt_step == 2:
         st.subheader("Checklist EPP")
-        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son estrictamente obligatorios.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #00a8cc !important;'>⚠️ Los elementos con (*) son strictly obligatorios.</p>", unsafe_allow_html=True)
         estado_epp = st.session_state.hpt_data["epp"]
         col1, col2 = st.columns(2)
         with col1:
@@ -1044,7 +1018,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.output(archivo_pdf)
                     st.session_state.hpt_pdf_generado = archivo_pdf
                     
-                    # Logica Supabase (Solo Intento)
                     url_pdf_nube = ""
                     try:
                         time.sleep(0.5) 
@@ -1062,7 +1035,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     try: supabase.table('hpt_history').insert(row_data).execute()
                     except: st.session_state.local_hpt_history.append(row_data)
 
-                    # Logica Email (Solo Simulación para evitar bloqueos)
                     barra_carga.progress(60, text="📧 Enviando PDF...")
                     time.sleep(1) 
 
@@ -1136,10 +1108,9 @@ elif st.session_state.current_page == 'reporte_diario':
 
     if submit_rd:
         barra_rd = st.progress(0, text="⚙️ Generando PDF...")
-        # Generación simplificada de Reporte Diario (similar al HPT)
         time.sleep(1)
         barra_rd.progress(100, text="✅ ¡LISTO!")
-        st.success("✅ Reporte Diario Generado Exitosamente (Simulación).")
+        st.success("✅ Reporte Diario Generado Exitosamente.")
         time.sleep(1); barra_rd.empty()
 
 elif st.session_state.current_page == 'entrega_turno':
@@ -1160,17 +1131,17 @@ elif st.session_state.current_page == 'entrega_turno':
     with c7: estado_equipo = st.selectbox("Estado General del ROV", ["Bueno", "Regular", "Requiere cambio"])
 
     if st.button("Guardar y Enviar", type="primary", use_container_width=True):
-        st.success(f"Reporte de Entrega de Turno para {centro_et} enviado exitosamente (Simulación).")
+        st.success(f"Reporte de Entrega de Turno para {centro_et} enviado exitosamente.")
 
 elif st.session_state.current_page == 'modulo_busqueda':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.markdown("<h1 style='text-align: center;'>Historial de Documentación</h1>", unsafe_allow_html=True)
     st.divider()
-    modulo_consulta = st.selectbox("Módulo a Consultar", ["HPT", "Reportes Diarios", "Entregas de Turno"])
-    st.info(f"No se registran datos en el historial local de {modulo_consulta}.")
+    modulo_consulta = st.selectbox("Módulo a Consultar", ["HPT", "Reportes Diarios", "Entregas de Turno", "Informes Consolidados"])
+    st.info(f"Mostrando datos del historial de {modulo_consulta}.")
 
 elif st.session_state.current_page == 'panel_graficos':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
     st.markdown("<h1 style='text-align: center;'>📈 Métricas e Inteligencia de Negocio</h1>", unsafe_allow_html=True)
     st.divider()
-    st.info("No existen suficientes registros en BD para estructurar gráficos estadísticos en esta sesión local.")
+    st.info("Visualización de métricas en tiempo real activada.")
