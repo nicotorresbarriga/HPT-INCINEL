@@ -85,8 +85,13 @@ def init_connection():
 
 USUARIOS = {"Ntorres": "17909926", "admin": "admin"}
 CENTROS_AREAS = {"Centro Punta Vergara": "Area Austral"}
-CENTROS_CORREOS = {"Centro Punta Vergara": "centro.puntavergara@blumar.com"}
-CORREOS_PREVENCION = ["franco.vidal@blumar.com", "jonathan.romero@blumar.com"]
+
+# MODO PRUEBAS: Todos los correos visibles apuntan a la cuenta de pruebas
+CENTROS_CORREOS = {"Centro Punta Vergara": "reportesrovincinel@gmail.com"}
+
+# PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
+CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
+
 CORREOS_OCULTOS = ["calarcon@incinel.cl", "ealvarez@incinel.cl"]
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
@@ -250,7 +255,7 @@ if not st.session_state.logged_in:
                     st.error("Credenciales inválidas.")
 
 elif st.session_state.current_page == 'main_menu':
-    st.title("Sistema de Gestión Operativa")
+    st.markdown("<h1 style='text-align: center;'>Sistema de Gestión Operativa</h1>", unsafe_allow_html=True)
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
     
     if st.session_state.current_user == 'admin':
@@ -331,7 +336,7 @@ elif st.session_state.current_page == 'main_menu':
 
 elif st.session_state.current_page == 'hpt_menu':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("Módulo HPT")
+    st.markdown("<h1 style='text-align: center;'>Módulo HPT</h1>", unsafe_allow_html=True)
     st.divider()
     if st.button("➕ CREAR NUEVA HPT", use_container_width=True): 
         set_step(1)
@@ -350,7 +355,7 @@ elif st.session_state.current_page == 'hpt_menu':
 
 elif st.session_state.current_page == 'hpt_nuevo':
     st.button("⬅️ Cancelar y Volver al Menú HPT", on_click=set_page, args=('hpt_menu',))
-    st.title("Nueva HPT - Paso " + str(st.session_state.hpt_step))
+    st.markdown(f"<h1 style='text-align: center;'>Nueva HPT - Paso {st.session_state.hpt_step}</h1>", unsafe_allow_html=True)
     st.progress(st.session_state.hpt_step / 4.0)
     
     if st.session_state.hpt_step == 1:
@@ -771,7 +776,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
 elif st.session_state.current_page == 'reporte_diario':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("Reporte Diario Operativo")
+    st.markdown("<h1 style='text-align: center;'>Reporte Diario Operativo</h1>", unsafe_allow_html=True)
     st.divider()
 
     st.subheader("Datos Operacionales de Faena")
@@ -994,7 +999,7 @@ elif st.session_state.current_page == 'reporte_diario':
 
 elif st.session_state.current_page == 'entrega_turno':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("Panel de Entrega de Turno Operativo")
+    st.markdown("<h1 style='text-align: center;'>Panel de Entrega de Turno Operativo</h1>", unsafe_allow_html=True)
     st.divider()
 
     st.header("1. Información General")
@@ -1108,7 +1113,8 @@ elif st.session_state.current_page == 'entrega_turno':
 
                 msg = MIMEMultipart()
                 msg['From'] = remitente
-                msg['To'] = correo_destino_et
+                # PRUEBA: Todos los correos forzados a esta dirección
+                msg['To'] = "reportesrovincinel@gmail.com"
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta entrega formal de turno.", 'plain'))
@@ -1141,7 +1147,7 @@ elif st.session_state.current_page == 'entrega_turno':
 
 elif st.session_state.current_page == 'modulo_busqueda':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("Historial de Documentación y Descargas")
+    st.markdown("<h1 style='text-align: center;'>Historial de Documentación y Descargas</h1>", unsafe_allow_html=True)
     st.divider()
     
     col_rol, col_modulo = st.columns(2)
@@ -1254,7 +1260,7 @@ elif st.session_state.current_page == 'modulo_busqueda':
 
 elif st.session_state.current_page == 'panel_graficos':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
-    st.title("📈 Métricas e Inteligencia de Negocio")
+    st.markdown("<h1 style='text-align: center;'>📈 Métricas e Inteligencia de Negocio</h1>", unsafe_allow_html=True)
     st.divider()
     
     admin_autorizado_graf = st.session_state.admin_acceso_graficos or st.session_state.current_user == 'admin'
