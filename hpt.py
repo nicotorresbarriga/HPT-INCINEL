@@ -94,7 +94,7 @@ if 'centros_correos_db' not in st.session_state:
     st.session_state.centros_correos_db = {"Centro Punta Vergara": "reportesrovincinel@gmail.com"}
 
 # PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
-CORREOS_PREVENCION = []
+CORREOS_PREVENCION = [,]
 CORREOS_OCULTOS = []
 
 RANGOS_INICIO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 12) for m in (0, 30)]  
