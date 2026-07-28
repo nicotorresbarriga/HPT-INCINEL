@@ -147,7 +147,14 @@ def obtener_ruta_logo():
     ]
     for p in posibles:
         if os.path.exists(p):
-            return p
+            try:
+                # Verificamos que el archivo sea una imagen válida antes de retornarlo
+                with Image.open(p) as img:
+                    img.verify()
+                return p
+            except Exception:
+                # Si el archivo está corrupto o no es imagen, probamos el siguiente
+                continue
     return None
 
 def procesar_firma(canvas_obj, filename):
@@ -256,7 +263,11 @@ if not st.session_state.logged_in:
         st.markdown("<br><br>", unsafe_allow_html=True)
         logo = obtener_ruta_logo()
         if logo and os.path.exists(logo):
-            st.image(logo, use_container_width=True)
+            try:
+                st.image(logo, use_container_width=True)
+            except Exception as e:
+                # Si a pesar de la verificación falla, ignoramos el error para no botar la app
+                pass
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
