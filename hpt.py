@@ -29,14 +29,12 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
     .stApp {
         background: linear-gradient(135deg, #000511 0%, #00122c 50%, #002353 100%);
     }
     h1, h2, h3, p, label, .stMarkdown, span, .stCheckbox label span {
         color: #ffffff !important;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     .stButton>button {
         background-color: #00a8cc;
@@ -85,13 +83,20 @@ def init_connection():
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-USUARIOS = {"Ntorres": "17909926", "admin": "admin"}
-CENTROS_AREAS = {"Centro Punta Vergara": "Area Austral"}
+# Bases de datos temporales en Session State para Gestión de Administrador
+if 'usuarios_db' not in st.session_state:
+    st.session_state.usuarios_db = {
+        "Ntorres": {"password": "17909926", "rut": "17.909.926-8"},
+        "admin": {"password": "admin", "rut": "N/A"}
+    }
+if 'centros_db' not in st.session_state:
+    st.session_state.centros_db = {
+        "Centro Punta Vergara": {"area": "Area Austral", "correo": "reportesrovincinel@gmail.com"}
+    }
 
-# MODO PRUEBAS: Todos los correos visibles apuntan a la cuenta de pruebas
-CENTROS_CORREOS = {"Centro Punta Vergara": "reportesrovincinel@gmail.com"}
+CENTROS_AREAS = {k: v["area"] for k, v in st.session_state.centros_db.items()}
+CENTROS_CORREOS = {k: v["correo"] for k, v in st.session_state.centros_db.items()}
 
-# PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
 
@@ -133,18 +138,6 @@ if 'admin_acceso_graficos' not in st.session_state: st.session_state.admin_acces
 def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
-def obtener_ruta_logo():
-    """Busca el archivo de logo priorizando logo_tridentech y formatos compatibles."""
-    posibles_nombres = [
-        "logo_tridentech.png", "logo_tridentech.jpg", "logo_tridentech.jpeg",
-        "logo2.png", "logo2.jpg", "logo2.jpeg",
-        "logo.png", "logo.jpg", "logo.jpeg"
-    ]
-    for nombre in posibles_nombres:
-        if os.path.exists(nombre):
-            return nombre
-    return None
-
 def procesar_firma(canvas_obj, filename):
     if canvas_obj.image_data is not None:
         img_data = canvas_obj.image_data
@@ -155,6 +148,12 @@ def procesar_firma(canvas_obj, filename):
         return True
     return False
 
+def obtener_logo():
+    if os.path.exists("logo_tridentech.png"): return "logo_tridentech.png"
+    if os.path.exists("logo_tridentech.jpg"): return "logo_tridentech.jpg"
+    if os.path.exists("logo2.png"): return "logo2.png"
+    return "logo.png"
+
 def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None):
     pdf = FPDF()
     pdf.set_margins(10, 10, 10)
@@ -164,11 +163,7 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.set_draw_color(180, 180, 180)
 
     if os.path.exists(logo_filename):
-        try:
-            Image.open(logo_filename).load()
-            pdf.image(logo_filename, x=10, y=10, h=20)
-        except Exception:
-            pass
+        pdf.image(logo_filename, x=10, y=10, h=20)
         
     pdf.set_y(35) 
     pdf.set_font("Helvetica", 'B', 15)
@@ -240,10 +235,13 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
 
     pdf.set_auto_page_break(auto=False)
-    pdf.set_y(-12)
+    pdf.set_y(-18)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.set_text_color(15, 55, 105)
+    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=True)
     pdf.set_font("Helvetica", 'I', 8)
     pdf.set_text_color(128, 128, 128)
-    pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
+    pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
 
     pdf.output(nombre_archivo)
     return nombre_archivo
@@ -252,9 +250,9 @@ if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([3, 2, 3])
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        logo_app = obtener_ruta_logo()
-        if logo_app:
-            st.image(logo_app, use_container_width=True)
+        logo_file = obtener_logo()
+        if os.path.exists(logo_file):
+            st.image(logo_file, use_container_width=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
@@ -264,7 +262,8 @@ if not st.session_state.logged_in:
             submitted = st.form_submit_button("INGRESAR", use_container_width=True)
             
             if submitted:
-                if user in USUARIOS and str(USUARIOS[user]) == str(password):
+                user_data = st.session_state.usuarios_db.get(user)
+                if user_data and str(user_data["password"]) == str(password):
                     st.session_state.logged_in = True
                     st.session_state.current_user = user
                     st.session_state.current_page = 'main_menu'
@@ -299,7 +298,7 @@ elif st.session_state.current_page == 'main_menu':
         rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
         
         reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        pilotos_activos = ["Ntorres"] 
+        pilotos_activos = [u for u in st.session_state.usuarios_db.keys() if u != 'admin'] 
         
         pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
         pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
@@ -344,6 +343,8 @@ elif st.session_state.current_page == 'main_menu':
     with c2:
         if st.button("🚢 REPORTE DIARIO", use_container_width=True): set_page('reporte_diario'); st.rerun()
         if st.button("📊 HISTORIAL / AUDITORÍA", use_container_width=True): set_page('modulo_busqueda'); st.rerun()
+        if st.session_state.current_user == 'admin':
+            if st.button("⚙️ PANEL ADMINISTRADOR", use_container_width=True): set_page('panel_admin'); st.rerun()
         if st.button("🔒 Cerrar Sesión", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.current_user = ""
@@ -351,6 +352,47 @@ elif st.session_state.current_page == 'main_menu':
             st.session_state.admin_acceso_graficos = False
             set_page('login')
             st.rerun()
+
+elif st.session_state.current_page == 'panel_admin':
+    st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
+    st.markdown("<h1 style='text-align: center;'>⚙️ Panel de Configuración Administrativa</h1>", unsafe_allow_html=True)
+    st.divider()
+    
+    tab1, tab2 = st.tabs(["👥 Gestión de Pilotos", "⚓ Gestión de Centros"])
+    
+    with tab1:
+        st.subheader("Agregar Nuevo Piloto")
+        with st.form("form_piloto"):
+            nuevo_user = st.text_input("Nombre de Usuario (Ej: JPerez)")
+            nuevo_rut = st.text_input("RUT (Ej: 12.345.678-9)")
+            nuevo_pass = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Guardar Piloto", use_container_width=True):
+                if nuevo_user and nuevo_rut and nuevo_pass:
+                    st.session_state.usuarios_db[nuevo_user] = {"password": nuevo_pass, "rut": nuevo_rut}
+                    st.success(f"Piloto {nuevo_user} agregado exitosamente.")
+                else:
+                    st.error("Todos los campos son obligatorios.")
+                    
+        st.markdown("---")
+        st.subheader("Pilotos Registrados")
+        st.write(st.session_state.usuarios_db)
+
+    with tab2:
+        st.subheader("Agregar Nuevo Centro")
+        with st.form("form_centro"):
+            nuevo_centro = st.text_input("Nombre del Centro (Ej: Centro Puerto Cisnes)")
+            nueva_area = st.text_input("Área Geográfica (Ej: Area Aysen)")
+            nuevo_correo = st.text_input("Correo Destino (Ej: reportes@blumar.com)")
+            if st.form_submit_button("Guardar Centro", use_container_width=True):
+                if nuevo_centro and nueva_area and nuevo_correo:
+                    st.session_state.centros_db[nuevo_centro] = {"area": nueva_area, "correo": nuevo_correo}
+                    st.success(f"Centro {nuevo_centro} agregado exitosamente.")
+                else:
+                    st.error("Todos los campos son obligatorios.")
+                    
+        st.markdown("---")
+        st.subheader("Centros Registrados")
+        st.write(st.session_state.centros_db)
 
 elif st.session_state.current_page == 'hpt_menu':
     st.button("⬅️ Volver al Menú Principal", on_click=set_page, args=('main_menu',))
@@ -522,12 +564,15 @@ elif st.session_state.current_page == 'hpt_nuevo':
     elif st.session_state.hpt_step == 4:
         st.subheader("Validación Final")
         with st.expander("Toma de Conocimiento", expanded=True):
-            tc_nombre = st.text_input("Nombre Difusión", value="Faena diaria")
+            tc_nombre = st.text_input("Nombre Difusión")
             col1, col2 = st.columns(2)
             with col1:
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
-                tc_rut = st.text_input("RUT Relator")
+                
+                # Autocompletado del RUT según usuario en sesión
+                tc_rut_default = st.session_state.usuarios_db.get(st.session_state.current_user, {}).get("rut", "")
+                tc_rut = st.text_input("RUT Relator", value=tc_rut_default)
             with col2:
                 tc_hora = st.selectbox("Hora Difusión", RANGO_HORA_DIFUSION)
                 idx_dur = RANGO_DURACION.index(st.session_state.hpt_data["tc_duracion"]) if st.session_state.hpt_data["tc_duracion"] in RANGO_DURACION else 2
@@ -558,13 +603,8 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 
                 try:
                     pdf = FPDF(); pdf.add_page()
-                    logo_pdf = obtener_ruta_logo()
-                    if logo_pdf and os.path.exists(logo_pdf):
-                        try:
-                            Image.open(logo_pdf).load()
-                            pdf.image(logo_pdf, x=10, y=8, h=20)
-                        except Exception:
-                            pass
+                    logo_pdf = obtener_logo()
+                    if os.path.exists(logo_pdf): pdf.image(logo_pdf, x=10, y=8, h=20)
                     
                     pdf.set_draw_color(180, 180, 180)
                     pdf.set_y(32); pdf.set_font("Arial", "B", 12)
@@ -688,10 +728,13 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         os.remove(temp_img_path)
 
                     pdf.set_auto_page_break(auto=False)
-                    pdf.set_y(-12)
+                    pdf.set_y(-18)
+                    pdf.set_font("Arial", "B", 8)
+                    pdf.set_text_color(15, 55, 105)
+                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=True)
                     pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
-                    pdf.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+                    pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
                     identificador_unico = str(uuid.uuid4())[:8]
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}_{identificador_unico}.pdf"
@@ -869,13 +912,8 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd = FPDF(); pdf_rd.add_page()
             pdf_rd.set_draw_color(180, 180, 180)
             
-            logo_pdf_rd = obtener_ruta_logo()
-            if logo_pdf_rd and os.path.exists(logo_pdf_rd):
-                try:
-                    Image.open(logo_pdf_rd).load()
-                    pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
-                except Exception:
-                    pass
+            logo_pdf_rd = obtener_logo()
+            if os.path.exists(logo_pdf_rd): pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
             
             pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -884,6 +922,9 @@ elif st.session_state.current_page == 'reporte_diario':
             fecha_hora_actual = hora_chile.strftime("%Y-%m-%d %H:%M:%S")
             pdf_rd.set_font("Arial", "I", 8); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 6, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
+            # Adición de número correlativo visible
+            pdf_rd.set_font("Arial", "B", 10); pdf_rd.set_text_color(15, 55, 105)
+            pdf_rd.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
             pdf_rd.ln(3)
             
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -914,7 +955,23 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(190, 6, "Descripcion de la Tarea Realizada:", border=0, ln=True, fill=True)
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 8)
-            pdf_rd.multi_cell(190, 5, txt=tarea_rd, border=1)
+            
+            # Recuadro de altura dinámica para llenar espacios
+            x_start = pdf_rd.get_x()
+            y_start = pdf_rd.get_y()
+            pdf_rd.multi_cell(190, 5, txt=tarea_rd, border=0)
+            y_end = pdf_rd.get_y()
+            
+            alto_minimo = 80 # Ajustable para llenar la hoja
+            alto_real = y_end - y_start
+            if alto_real < alto_minimo:
+                pdf_rd.set_xy(x_start, y_start)
+                pdf_rd.cell(190, alto_minimo, "", border=1, ln=True)
+                pdf_rd.set_xy(x_start, y_start + alto_minimo)
+            else:
+                pdf_rd.set_xy(x_start, y_start)
+                pdf_rd.cell(190, alto_real, "", border=1, ln=True)
+                pdf_rd.set_xy(x_start, y_start + alto_real)
             
             pdf_rd.ln(3)
             if pdf_rd.get_y() > 250: pdf_rd.add_page()
@@ -952,10 +1009,13 @@ elif st.session_state.current_page == 'reporte_diario':
                 os.remove(temp_img_path)
 
             pdf_rd.set_auto_page_break(auto=False)
-            pdf_rd.set_y(-12)
+            pdf_rd.set_y(-18)
+            pdf_rd.set_font("Arial", "B", 8)
+            pdf_rd.set_text_color(15, 55, 105)
+            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=True)
             pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
-            pdf_rd.cell(190, 10, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+            pdf_rd.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
             identificador_unico_rd = str(uuid.uuid4())[:8]
             archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
@@ -1101,8 +1161,8 @@ elif st.session_state.current_page == 'entrega_turno':
             nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
             
             try:
-                logo_incinel = obtener_ruta_logo() or ""
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_incinel, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                logo_trident = obtener_logo()
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_trident, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
