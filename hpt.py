@@ -142,7 +142,8 @@ def set_step(step_number): st.session_state.hpt_step = step_number
 def obtener_ruta_logo():
     """Busca estrictamente el archivo de logo de TechTrident para modernizar el frontend y PDF."""
     posibles = [
-        "logo_tridentech.png"
+        "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.jpeg",
+        "Logo_Tridentech.png", "Logo_Tridentech.PNG", "Logo.png", "logo.png"
     ]
     for p in posibles:
         if os.path.exists(p):
@@ -267,6 +268,16 @@ if not st.session_state.logged_in:
             except Exception as e:
                 # Si a pesar de la verificación falla, ignoramos el error para no botar la app
                 pass
+        else:
+            # Fallback visual en caso de que el archivo de imagen no se encuentre en el servidor
+            st.markdown(
+                """
+                <div style='text-align: center; margin-bottom: 10px;'>
+                    <div style='font-size: 70px; margin-bottom: -15px;'>⚓</div>
+                    <h1 style='color: #00a8cc; font-weight: 800; font-size: 38px; margin: 0; letter-spacing: 1px;'>TechTrident</h1>
+                </div>
+                """, unsafe_allow_html=True
+            )
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
