@@ -94,7 +94,7 @@ if 'db_usuarios' not in st.session_state:
 if 'db_centros_areas' not in st.session_state: 
     st.session_state.db_centros_areas = {"Centro Punta Vergara": "Area Austral"}
 if 'db_centros_correos' not in st.session_state: 
-    st.session_state.db_centros_correos = {"Centro Punta Vergara": "reportesrovincinel@gmail.com"}
+    st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@tridentech.cl"}
 
 # PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
@@ -140,10 +140,9 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
-    """Busca el archivo de logo priorizando logo_tridentech.png para modernizar el frontend y PDF."""
+    """Busca estrictamente el archivo de logo de TechTrident para modernizar el frontend y PDF."""
     posibles = [
-        "logo_tridentech.png", "logo_tridentech.jpg", 
-        "logo2.png", "logo2.jpg", "logo.png", "logo.jpg"
+        "logo_tridentech.png"
     ]
     for p in posibles:
         if os.path.exists(p):
@@ -766,10 +765,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     barra_carga.progress(60, text="📧 Enviando PDF...")
                     remitente = st.secrets["EMAIL_USER"]
                     password = st.secrets["EMAIL_PASS"]
-                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.tridentech.cl")
                     puerto_smtp = st.secrets.get("SMTP_PORT", 587)
                     
-                    correo_centro = "reportesrovincinel@gmail.com"
+                    correo_centro = "contacto@tridentech.cl"
                     lista_destinatarios = [correo_centro]
                     
                     msg = MIMEMultipart()
@@ -1146,8 +1145,8 @@ elif st.session_state.current_page == 'entrega_turno':
             nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
             
             try:
-                logo_incinel = obtener_ruta_logo()
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_incinel, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                logo_tridentech = obtener_ruta_logo()
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
@@ -1168,12 +1167,12 @@ elif st.session_state.current_page == 'entrega_turno':
                 barra_et.progress(80, text="📧 Transmitiendo Correo...")
                 remitente = st.secrets["EMAIL_USER"]
                 password = st.secrets["EMAIL_PASS"]
-                servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.tridentech.cl")
                 puerto_smtp = st.secrets.get("SMTP_PORT", 587)
 
                 msg = MIMEMultipart()
                 msg['From'] = remitente
-                msg['To'] = "reportesrovincinel@gmail.com"
+                msg['To'] = "contacto@tridentech.cl"
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta entrega formal de turno.", 'plain'))
