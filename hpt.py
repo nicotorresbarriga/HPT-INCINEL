@@ -85,7 +85,7 @@ def init_connection():
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-# Bases de datos dinámicas en sesión para permitir administración
+# Bases de datos dinámicas en sesión
 if 'db_usuarios' not in st.session_state: 
     st.session_state.db_usuarios = {
         "Ntorres": {"pass": "17909926", "rut": "17.909.926-8"}, 
@@ -96,7 +96,6 @@ if 'db_centros_areas' not in st.session_state:
 if 'db_centros_correos' not in st.session_state: 
     st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@tridentech.cl"}
 
-# PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
 
@@ -143,7 +142,7 @@ def obtener_ruta_logo():
     """Busca estrictamente el archivo de logo de TechTrident. Tolerante a fallos y mayúsculas."""
     posibles = [
         "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.JPG",
-        "Logo_tridentech.png", "logo_Tridentech.png", "Logo_Tridentech.png"
+        "Logo_tridentech.png", "logo_Tridentech.png"
     ]
     for p in posibles:
         if os.path.exists(p):
@@ -191,7 +190,6 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
         pdf.ln(3); pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
         pdf.cell(190, 8, f"  {seccion.upper()}", border=0, ln=True, fill=True)
-        pdf.ln(2) # Separador visual para que no parezca Excel
         for clave, valor in campos.items():
             nombre_campo = clave.replace('_', ' ')
             if pdf.get_y() > 265: pdf.add_page()
@@ -246,9 +244,11 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     pdf.set_auto_page_break(auto=False)
     pdf.set_y(-18)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.set_text_color(15, 55, 105)
+    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=1)
     pdf.set_font("Helvetica", 'I', 8)
     pdf.set_text_color(128, 128, 128)
-    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=1)
     pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
 
     pdf.output(nombre_archivo)
@@ -266,14 +266,7 @@ if not st.session_state.logged_in:
                 pass
         else:
             # Respaldo si no encuentra el logo
-            st.markdown(
-                """
-                <div style='text-align: center; margin-bottom: 10px;'>
-                    <div style='font-size: 70px; margin-bottom: -15px;'>⚓</div>
-                    <h1 style='color: #00a8cc; font-weight: 800; font-size: 38px; margin: 0; letter-spacing: 1px;'>TechTrident</h1>
-                </div>
-                """, unsafe_allow_html=True
-            )
+            st.markdown("<h1 style='text-align: center; color: #00a8cc;'>⚓ TechTrident</h1>", unsafe_allow_html=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
@@ -318,7 +311,6 @@ elif st.session_state.current_page == 'main_menu':
         rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
         
         reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        # Obtenemos los pilotos activos excluyendo a admin
         pilotos_activos = [k for k in st.session_state.db_usuarios.keys() if k != 'admin'] 
         
         pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
@@ -355,7 +347,6 @@ elif st.session_state.current_page == 'main_menu':
         if hora_chile > limite_rd and pendientes_rd:
             st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
             
-        # Panel de Configuración para el Administrador
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
             tab_pilotos, tab_centros = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo"])
             
@@ -576,7 +567,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
                 
-                # Autocompletado automático del RUT
+                # Autocompletado del RUT
                 rut_defecto = st.session_state.db_usuarios.get(st.session_state.current_user, {}).get("rut", "")
                 tc_rut = st.text_input("RUT Relator", value=rut_defecto)
             with col2:
@@ -607,20 +598,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 data = st.session_state.hpt_data
                 barra_carga = st.progress(0, text="⚙️ Generando PDF...")
                 
-                # --- NUEVA LÓGICA DE CORRELATIVO HPT ---
-                hora_chile = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
-                fecha_str = hora_chile.strftime("%Y%m%d")
-                hora_str = hora_chile.strftime("%H%M")
-                
-                try:
-                    res_count = supabase.table('hpt_history').select('id', count='exact').execute()
-                    correlativo = res_count.count + 1
-                except:
-                    correlativo = len(st.session_state.local_hpt_history) + 1
-                    
-                folio_str = f"HPT-{fecha_str}-{correlativo:03d}-{hora_str}"
-                # ---------------------------------------
-                
                 try:
                     pdf = FPDF(); pdf.add_page()
                     logo_pdf = obtener_ruta_logo()
@@ -635,19 +612,14 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(0, 10, "HERRAMIENTA DE PREVENCION EN TERRENO (HPT) - ROV", border=0, ln=True, align="C", fill=True)
                     
+                    hora_chile = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
                     fecha_hora_actual = hora_chile.strftime("%Y-%m-%d %H:%M:%S")
                     pdf.set_font("Arial", "I", 8); pdf.set_text_color(128, 128, 128)
-                    pdf.cell(0, 6, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {st.session_state.current_user}", border=0, ln=True, align="C")
-                    
-                    # --- NÚMERO CORRELATIVO VISIBLE ---
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.set_text_color(15, 55, 105)
-                    pdf.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
-                    pdf.ln(4)
+                    pdf.cell(0, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {st.session_state.current_user}", border=0, ln=True, align="C")
+                    pdf.ln(2)
 
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "1. DATOS OPERATIVOS", border=0, ln=True, fill=True)
-                    pdf.ln(2) # Separador visual
                     pdf.set_text_color(0, 0, 0)
                     
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('empresa', '')[:35], border=1)
@@ -665,20 +637,17 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Trabajo Rutinario:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(155, 6, data.get('trabajo_rutinario', 'Sí'), border=1, ln=True)
 
-                    pdf.ln(4) # Separador de sección
                     pdf.set_font("Arial", "B", 8)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(190, 6, "Faena Primaria y Detalles Especificos:", border=0, ln=True, fill=True)
-                    pdf.ln(2) # Separador visual
                     pdf.set_text_color(0, 0, 0)
                     pdf.set_font("Arial", "", 8)
                     texto_tarea = f"FAENA: {data.get('faena', '')}\nDETALLES: {data.get('tarea', '')}"
                     pdf.multi_cell(190, 5, texto_tarea, border=1)
 
-                    pdf.ln(4)
+                    pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=0, ln=True, fill=True)
-                    pdf.ln(2)
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     epp_labels = ["Guantes", "Chaleco", "Zapatos", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
                     epp_vals = data.get('epp', []); epp_seleccionados = [epp_labels[i] for i in range(len(epp_labels)) if i < len(epp_vals) and epp_vals[i]]
@@ -686,10 +655,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     else:
                         for i, epp in enumerate(epp_seleccionados): pdf.cell(190/3, 6, f"[ X ] {epp}", border=1, ln=1 if (i + 1) % 3 == 0 or i == len(epp_seleccionados) - 1 else 0)
 
-                    pdf.ln(4)
+                    pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "3. VERIFICACIONES CLAVES DE SEGURIDAD", border=0, ln=True, fill=True)
-                    pdf.ln(2)
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     
                     def print_check(pregunta, respuesta):
@@ -701,10 +669,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     print_check("Equipos de apoyo y comunicacion operativos y revisados", data.get("check_equipos", ""))
                     print_check("Area de trabajo ordenada, despejada y delimitada", data.get("check_orden", ""))
 
-                    pdf.ln(4)
+                    pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. RIESGOS CRITICOS EVALUADOS (ERC)", border=0, ln=True, fill=True)
-                    pdf.ln(2)
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Navegacion", "Atrapamiento"]
                     erc_vals = data.get('erc', []); erc_seleccionados = [erc_labels[i] for i in range(len(erc_labels)) if i < len(erc_vals) and erc_vals[i]]
@@ -712,10 +679,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     else:
                         for i, erc in enumerate(erc_seleccionados): pdf.cell(190/2, 6, f"[ X ] {erc}", border=1, ln=1 if (i + 1) % 2 == 0 or i == len(erc_seleccionados) - 1 else 0)
 
-                    pdf.ln(4)
+                    pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. DIFUSION Y TOMA DE CONOCIMIENTO", border=0, ln=True, fill=True)
-                    pdf.ln(2)
                     pdf.set_text_color(0, 0, 0)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_relator[:35], border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "RUT Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_rut[:20], border=1, ln=True)
@@ -723,10 +689,9 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Fecha y Hora:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, f"{tc_fecha} {tc_hora}", border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Duracion Rango:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_duracion, border=1, ln=True)
 
-                    pdf.ln(4)
+                    pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "6. CUADRO DE FIRMAS RESPONSABLES", border=0, ln=True, fill=True)
-                    pdf.ln(2)
                     pdf.set_text_color(0, 0, 0)
                     pdf.cell(95, 22, "", border=1); pdf.cell(95, 22, "", border=1, ln=True)
                     id_firmas = uuid.uuid4().hex[:8]; f_serv = f"f_serv_{id_firmas}.jpg"; f_enc = f"f_encargado_{id_firmas}.jpg"
@@ -740,7 +705,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         pdf.set_font("Arial", "B", 10)
                         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                         pdf.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=0, ln=True, fill=True)
-                        pdf.ln(2)
                         pdf.set_text_color(0, 0, 0)
                         pdf.ln(5)
                         
@@ -766,9 +730,11 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     pdf.set_auto_page_break(auto=False)
                     pdf.set_y(-18)
+                    pdf.set_font("Arial", "B", 8)
+                    pdf.set_text_color(15, 55, 105)
+                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
                     pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
-                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
                     pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
                     identificador_unico = str(uuid.uuid4())[:8]
@@ -963,15 +929,14 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "I", 9); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 8, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
             
-            # --- NÚMERO CORRELATIVO EN EL PDF REPORTE DIARIO ---
+            # --- AQUÍ ESTÁ EL NÚMERO CORRELATIVO EN EL PDF ---
             pdf_rd.set_font("Arial", "B", 12)
-            pdf_rd.set_text_color(15, 55, 105)
+            pdf_rd.set_text_color(15, 55, 105) # Azul corporativo
             pdf_rd.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
             pdf_rd.ln(5)
             
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "1. DATOS GENERALES", border=0, ln=True, fill=True)
-            pdf_rd.ln(2)
             pdf_rd.set_text_color(0, 0, 0)
             
             h_cell = 8
@@ -990,23 +955,18 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
 
-            pdf_rd.ln(6)
+            pdf_rd.ln(8)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "2. DETALLE OPERATIVO", border=0, ln=True, fill=True)
-            pdf_rd.ln(2)
-            
-            pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.cell(190, 8, "Estructura Intervenida:", border=0, ln=True, fill=True)
-            pdf_rd.ln(2)
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(190, 10, str(jaula_rd), border=1, ln=True)
             
-            pdf_rd.ln(6)
+            pdf_rd.ln(4)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=0, ln=True, fill=True)
-            pdf_rd.ln(2)
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9)
             
-            # --- ESPACIADO DINÁMICO QUE OCUPA LA HOJA ---
+            # --- AQUÍ ESTÁ EL ESPACIADO DINÁMICO QUE OCUPA LA HOJA ---
             x_start = pdf_rd.get_x()
             y_start = pdf_rd.get_y()
             pdf_rd.multi_cell(190, 6, txt=tarea_rd, border=0)
@@ -1027,7 +987,6 @@ elif st.session_state.current_page == 'reporte_diario':
             if pdf_rd.get_y() > 220: pdf_rd.add_page()
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "3. CUADRO DE FIRMAS RESPONSABLES", border=0, ln=True, fill=True)
-            pdf_rd.ln(2)
             pdf_rd.set_text_color(0, 0, 0)
             pdf_rd.cell(95, 25, "", border=1); pdf_rd.cell(95, 25, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
@@ -1041,7 +1000,6 @@ elif st.session_state.current_page == 'reporte_diario':
                 pdf_rd.set_font("Arial", "B", 10)
                 pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
                 pdf_rd.cell(190, 10, "EVIDENCIA FOTOGRAFICA: ESTADO DE PUERTO", border=0, ln=True, fill=True)
-                pdf_rd.ln(2)
                 pdf_rd.set_text_color(0, 0, 0)
                 pdf_rd.ln(5)
                 
@@ -1062,9 +1020,11 @@ elif st.session_state.current_page == 'reporte_diario':
 
             pdf_rd.set_auto_page_break(auto=False)
             pdf_rd.set_y(-18)
+            pdf_rd.set_font("Arial", "B", 8)
+            pdf_rd.set_text_color(15, 55, 105)
+            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
             pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
-            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
             pdf_rd.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
             identificador_unico_rd = str(uuid.uuid4())[:8]
