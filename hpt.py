@@ -85,7 +85,7 @@ def init_connection():
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-# Bases de datos dinámicas en sesión para permitir administración
+# Bases de datos dinámicas en sesión
 if 'db_usuarios' not in st.session_state: 
     st.session_state.db_usuarios = {
         "Ntorres": {"pass": "17909926", "rut": "17.909.926-8"}, 
@@ -96,7 +96,6 @@ if 'db_centros_areas' not in st.session_state:
 if 'db_centros_correos' not in st.session_state: 
     st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@tridentech.cl"}
 
-# PREVENCIÓN DESACTIVADA VISUALMENTE PARA PRUEBAS
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
 
@@ -140,21 +139,14 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
-    """Busca estrictamente el archivo de logo de TechTrident para modernizar el frontend y PDF."""
+    """Busca estrictamente el archivo de logo de TechTrident. Tolerante a fallos y mayúsculas."""
     posibles = [
-        "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.jpeg",
-        "Logo_Tridentech.png", "Logo_Tridentech.PNG", "Logo.png", "logo.png"
+        "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.JPG",
+        "Logo_tridentech.png", "logo_Tridentech.png"
     ]
     for p in posibles:
         if os.path.exists(p):
-            try:
-                # Verificamos que el archivo sea una imagen válida antes de retornarlo
-                with Image.open(p) as img:
-                    img.verify()
-                return p
-            except Exception:
-                # Si el archivo está corrupto o no es imagen, probamos el siguiente
-                continue
+            return p
     return None
 
 def procesar_firma(canvas_obj, filename):
@@ -176,7 +168,10 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.set_draw_color(180, 180, 180)
 
     if logo_filename and os.path.exists(logo_filename):
-        pdf.image(logo_filename, x=10, y=10, h=20)
+        try:
+            pdf.image(logo_filename, x=10, y=10, h=20)
+        except Exception:
+            pass
         
     pdf.set_y(35) 
     pdf.set_font("Helvetica", 'B', 15)
@@ -249,9 +244,11 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     pdf.set_auto_page_break(auto=False)
     pdf.set_y(-18)
+    pdf.set_font("Helvetica", 'B', 8)
+    pdf.set_text_color(15, 55, 105)
+    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=1)
     pdf.set_font("Helvetica", 'I', 8)
     pdf.set_text_color(128, 128, 128)
-    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=1)
     pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
 
     pdf.output(nombre_archivo)
@@ -265,19 +262,11 @@ if not st.session_state.logged_in:
         if logo and os.path.exists(logo):
             try:
                 st.image(logo, use_container_width=True)
-            except Exception as e:
-                # Si a pesar de la verificación falla, ignoramos el error para no botar la app
+            except Exception:
                 pass
         else:
-            # Fallback visual en caso de que el archivo de imagen no se encuentre en el servidor
-            st.markdown(
-                """
-                <div style='text-align: center; margin-bottom: 10px;'>
-                    <div style='font-size: 70px; margin-bottom: -15px;'>⚓</div>
-                    <h1 style='color: #00a8cc; font-weight: 800; font-size: 38px; margin: 0; letter-spacing: 1px;'>TechTrident</h1>
-                </div>
-                """, unsafe_allow_html=True
-            )
+            # Respaldo si no encuentra el logo
+            st.markdown("<h1 style='text-align: center; color: #00a8cc;'>⚓ TechTrident</h1>", unsafe_allow_html=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
         
@@ -322,7 +311,6 @@ elif st.session_state.current_page == 'main_menu':
         rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
         
         reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        # Obtenemos los pilotos activos excluyendo a admin
         pilotos_activos = [k for k in st.session_state.db_usuarios.keys() if k != 'admin'] 
         
         pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
@@ -359,7 +347,6 @@ elif st.session_state.current_page == 'main_menu':
         if hora_chile > limite_rd and pendientes_rd:
             st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
             
-        # Panel de Configuración para el Administrador
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
             tab_pilotos, tab_centros = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo"])
             
@@ -580,7 +567,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
                 
-                # Obtenemos automáticamente el RUT desde la base de datos de sesión.
+                # Autocompletado del RUT
                 rut_defecto = st.session_state.db_usuarios.get(st.session_state.current_user, {}).get("rut", "")
                 tc_rut = st.text_input("RUT Relator", value=rut_defecto)
             with col2:
@@ -615,7 +602,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf = FPDF(); pdf.add_page()
                     logo_pdf = obtener_ruta_logo()
                     if logo_pdf and os.path.exists(logo_pdf):
-                        pdf.image(logo_pdf, x=10, y=8, h=20)
+                        try:
+                            pdf.image(logo_pdf, x=10, y=8, h=20)
+                        except Exception:
+                            pass
                     
                     pdf.set_draw_color(180, 180, 180)
                     pdf.set_y(32); pdf.set_font("Arial", "B", 12)
@@ -740,9 +730,11 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     pdf.set_auto_page_break(auto=False)
                     pdf.set_y(-18)
+                    pdf.set_font("Arial", "B", 8)
+                    pdf.set_text_color(15, 55, 105)
+                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
                     pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
-                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
                     pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
                     identificador_unico = str(uuid.uuid4())[:8]
@@ -924,7 +916,10 @@ elif st.session_state.current_page == 'reporte_diario':
             
             logo_pdf_rd = obtener_ruta_logo()
             if logo_pdf_rd and os.path.exists(logo_pdf_rd):
-                pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
+                try:
+                    pdf_rd.image(logo_pdf_rd, x=10, y=8, h=20)
+                except Exception:
+                    pass
             
             pdf_rd.set_y(32); pdf_rd.set_font("Arial", "B", 14)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -934,7 +929,9 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "I", 9); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 8, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
             
-            pdf_rd.set_font("Arial", "B", 11); pdf_rd.set_text_color(200, 40, 40)
+            # --- AQUÍ ESTÁ EL NÚMERO CORRELATIVO EN EL PDF ---
+            pdf_rd.set_font("Arial", "B", 12)
+            pdf_rd.set_text_color(15, 55, 105) # Azul corporativo
             pdf_rd.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
             pdf_rd.ln(5)
             
@@ -968,7 +965,23 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=0, ln=True, fill=True)
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9)
-            pdf_rd.multi_cell(190, 8, txt=tarea_rd, border=1)
+            
+            # --- AQUÍ ESTÁ EL ESPACIADO DINÁMICO QUE OCUPA LA HOJA ---
+            x_start = pdf_rd.get_x()
+            y_start = pdf_rd.get_y()
+            pdf_rd.multi_cell(190, 6, txt=tarea_rd, border=0)
+            y_end = pdf_rd.get_y()
+            
+            alto_minimo = 80
+            alto_real = y_end - y_start
+            if alto_real < alto_minimo:
+                pdf_rd.set_xy(x_start, y_start)
+                pdf_rd.cell(190, alto_minimo, "", border=1, ln=True)
+                pdf_rd.set_xy(x_start, y_start + alto_minimo)
+            else:
+                pdf_rd.set_xy(x_start, y_start)
+                pdf_rd.cell(190, alto_real, "", border=1, ln=True)
+                pdf_rd.set_xy(x_start, y_start + alto_real)
             
             pdf_rd.ln(10)
             if pdf_rd.get_y() > 220: pdf_rd.add_page()
@@ -1007,9 +1020,11 @@ elif st.session_state.current_page == 'reporte_diario':
 
             pdf_rd.set_auto_page_break(auto=False)
             pdf_rd.set_y(-18)
+            pdf_rd.set_font("Arial", "B", 8)
+            pdf_rd.set_text_color(15, 55, 105)
+            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
             pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
-            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
             pdf_rd.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
             identificador_unico_rd = str(uuid.uuid4())[:8]
