@@ -21,7 +21,7 @@ import io
 from supabase import create_client, Client
 
 st.set_page_config(
-    page_title="Plataforma TridenTech",
+    page_title="Plataforma TechTrident",
     page_icon="⚓",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -206,6 +206,7 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
         pdf.ln(3); pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
         pdf.cell(190, 8, f"  {seccion.upper()}", border=0, ln=True, fill=True)
+        pdf.ln(2) # Respiro visual agregado
         for clave, valor in campos.items():
             nombre_campo = clave.replace('_', ' ')
             if pdf.get_y() > 265: pdf.add_page()
@@ -375,6 +376,23 @@ elif st.session_state.current_page == 'main_menu':
                     if st.form_submit_button("Guardar Piloto") and new_user and new_pass:
                         st.session_state.db_usuarios[new_user] = {"pass": new_pass, "rut": new_rut}
                         st.success(f"Piloto {new_user} guardado correctamente.")
+                
+                # --- NUEVO: MODULO PARA ELIMINAR PILOTOS ---
+                st.markdown("---")
+                st.write("**Eliminar Piloto**")
+                pilotos_para_eliminar = [p for p in st.session_state.db_usuarios.keys() if p != 'admin']
+                if pilotos_para_eliminar:
+                    col_del1, col_del2 = st.columns([3, 1])
+                    with col_del1:
+                        piloto_a_eliminar = st.selectbox("Seleccione piloto a eliminar", pilotos_para_eliminar)
+                    with col_del2:
+                        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                        if st.button("🗑️ Eliminar Piloto", type="primary", use_container_width=True):
+                            del st.session_state.db_usuarios[piloto_a_eliminar]
+                            st.success(f"Piloto {piloto_a_eliminar} eliminado exitosamente.")
+                            st.rerun()
+                else:
+                    st.info("No hay pilotos adicionales registrados para eliminar.")
                         
             with tab_centros:
                 st.write("**Añadir o Actualizar Centro**")
@@ -387,6 +405,26 @@ elif st.session_state.current_page == 'main_menu':
                         st.session_state.db_centros_areas[new_centro] = new_area
                         st.session_state.db_centros_correos[new_centro] = new_correo
                         st.success(f"Centro {new_centro} guardado correctamente.")
+
+                # --- NUEVO: MODULO PARA ELIMINAR CENTROS ---
+                st.markdown("---")
+                st.write("**Eliminar Centro**")
+                centros_existentes = list(st.session_state.db_centros_areas.keys())
+                if centros_existentes:
+                    col_del_c1, col_del_c2 = st.columns([3, 1])
+                    with col_del_c1:
+                        centro_a_eliminar = st.selectbox("Seleccione centro a eliminar", centros_existentes)
+                    with col_del_c2:
+                        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                        if st.button("🗑️ Eliminar Centro", type="primary", use_container_width=True):
+                            if centro_a_eliminar in st.session_state.db_centros_areas:
+                                del st.session_state.db_centros_areas[centro_a_eliminar]
+                            if centro_a_eliminar in st.session_state.db_centros_correos:
+                                del st.session_state.db_centros_correos[centro_a_eliminar]
+                            st.success(f"Centro {centro_a_eliminar} eliminado exitosamente.")
+                            st.rerun()
+                else:
+                    st.info("No hay centros registrados para eliminar.")
 
     st.divider()
     c1, c2 = st.columns(2)
@@ -634,6 +672,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "1. DATOS OPERATIVOS", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0)
                     
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Empresa / Mandante:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, data.get('empresa', '')[:35], border=1)
@@ -654,6 +693,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_font("Arial", "B", 8)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.cell(190, 6, "Faena Primaria y Detalles Especificos:", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0)
                     pdf.set_font("Arial", "", 8)
                     texto_tarea = f"FAENA: {data.get('faena', '')}\nDETALLES: {data.get('tarea', '')}"
@@ -662,6 +702,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "2. EQUIPO DE PROTECCION PERSONAL SELECCIONADO", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     epp_labels = ["Guantes", "Chaleco", "Zapatos", "Ropa Termica", "Traje Agua", "Comunicacion", "Botiquin"]
                     epp_vals = data.get('epp', []); epp_seleccionados = [epp_labels[i] for i in range(len(epp_labels)) if i < len(epp_vals) and epp_vals[i]]
@@ -672,6 +713,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "3. VERIFICACIONES CLAVES DE SEGURIDAD", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     
                     def print_check(pregunta, respuesta):
@@ -686,6 +728,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "4. RIESGOS CRITICOS EVALUADOS (ERC)", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "", 8)
                     erc_labels = ["Izaje", "Buceo", "Eq. Electricos", "Caidas", "Navegacion", "Atrapamiento"]
                     erc_vals = data.get('erc', []); erc_seleccionados = [erc_labels[i] for i in range(len(erc_labels)) if i < len(erc_vals) and erc_vals[i]]
@@ -696,6 +739,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "5. DIFUSION Y TOMA DE CONOCIMIENTO", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "Relator / Piloto:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_relator[:35], border=1)
                     pdf.set_font("Arial", "B", 8); pdf.cell(35, 6, "RUT Relator:", border=1); pdf.set_font("Arial", "", 8); pdf.cell(60, 6, tc_rut[:20], border=1, ln=True)
@@ -706,6 +750,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.ln(2)
                     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", "B", 9); pdf.cell(190, 6, "6. CUADRO DE FIRMAS RESPONSABLES", border=0, ln=True, fill=True)
+                    pdf.ln(1) # Respiro visual
                     pdf.set_text_color(0, 0, 0)
                     pdf.cell(95, 22, "", border=1); pdf.cell(95, 22, "", border=1, ln=True)
                     id_firmas = uuid.uuid4().hex[:8]; f_serv = f"f_serv_{id_firmas}.jpg"; f_enc = f"f_encargado_{id_firmas}.jpg"
@@ -956,6 +1001,7 @@ elif st.session_state.current_page == 'reporte_diario':
             
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "1. DATOS GENERALES", border=0, ln=True, fill=True)
+            pdf_rd.ln(2) # Respiro visual
             pdf_rd.set_text_color(0, 0, 0)
             
             h_cell = 8
@@ -969,7 +1015,6 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, encargado_rd[:35] if encargado_rd else "N/A", border=1)
-            # --- AQUÍ ESTÁ LA LÍNEA CORREGIDA ---
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
@@ -978,12 +1023,15 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.ln(8)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "2. DETALLE OPERATIVO", border=0, ln=True, fill=True)
-            pdf_rd.cell(190, 8, "Estructura Intervenida:", border=0, ln=True, fill=True)
-            pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(190, 10, str(jaula_rd), border=1, ln=True)
+            pdf_rd.ln(2) # Respiro visual
+            pdf_rd.set_fill_color(240, 240, 240); pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "B", 9)
+            pdf_rd.cell(190, 8, "Estructura Intervenida:", border=1, ln=True, fill=True)
+            pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(190, 8, str(jaula_rd), border=1, ln=True)
             
             pdf_rd.ln(4)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=0, ln=True, fill=True)
+            pdf_rd.ln(2) # Respiro visual
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9)
             
             x_start = pdf_rd.get_x()
@@ -991,7 +1039,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.multi_cell(190, 6, txt=tarea_rd, border=0)
             y_end = pdf_rd.get_y()
             
-            alto_minimo = 80
+            alto_minimo = 25 # <-- REDUCIDO DE 80 A 25 PARA EVITAR CAJAS GIGANTES VACIAS
             alto_real = y_end - y_start
             if alto_real < alto_minimo:
                 pdf_rd.set_xy(x_start, y_start)
@@ -1002,10 +1050,11 @@ elif st.session_state.current_page == 'reporte_diario':
                 pdf_rd.cell(190, alto_real, "", border=1, ln=True)
                 pdf_rd.set_xy(x_start, y_start + alto_real)
             
-            pdf_rd.ln(10)
+            pdf_rd.ln(8)
             if pdf_rd.get_y() > 220: pdf_rd.add_page()
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "3. CUADRO DE FIRMAS RESPONSABLES", border=0, ln=True, fill=True)
+            pdf_rd.ln(2) # Respiro visual
             pdf_rd.set_text_color(0, 0, 0)
             pdf_rd.cell(95, 25, "", border=1); pdf_rd.cell(95, 25, "", border=1, ln=True)
             id_firmas_rd = uuid.uuid4().hex[:8]; f_pil_rd = f"f_p_rd_{id_firmas_rd}.jpg"; f_enc_rd = f"f_e_rd_{id_firmas_rd}.jpg"
