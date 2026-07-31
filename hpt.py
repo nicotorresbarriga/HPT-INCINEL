@@ -81,8 +81,16 @@ CLAVE_ADMIN = "9926"
 
 @st.cache_resource
 def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+    except Exception:
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        
+    if not url or not key:
+        raise ValueError("Credenciales de Supabase no encontradas.")
+        
     return create_client(url, key)
 
 # Bases de datos dinámicas en sesión
@@ -766,10 +774,16 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     except Exception as db_err: st.error(f"⚠️ Error al guardar en BD: {db_err}"); st.session_state.local_hpt_history.append(row_data)
 
                     barra_carga.progress(60, text="📧 Enviando PDF...")
-                    remitente = st.secrets["EMAIL_USER"]
-                    password = st.secrets["EMAIL_PASS"]
-                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.tridentech.cl")
-                    puerto_smtp = st.secrets.get("SMTP_PORT", 587)
+                    try:
+                        remitente = st.secrets["EMAIL_USER"]
+                        password = st.secrets["EMAIL_PASS"]
+                        servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                        puerto_smtp = int(st.secrets.get("SMTP_PORT", 587))
+                    except Exception:
+                        remitente = os.environ.get("EMAIL_USER")
+                        password = os.environ.get("EMAIL_PASS")
+                        servidor_smtp = os.environ.get("SMTP_SERVER", "mail.incinel.cl")
+                        puerto_smtp = int(os.environ.get("SMTP_PORT", 587))
                     
                     correo_centro = "contacto@tridentech.cl"
                     lista_destinatarios = [correo_centro]
@@ -1191,10 +1205,16 @@ elif st.session_state.current_page == 'entrega_turno':
                 except Exception as db_err: st.error(f"⚠️ Error BD: {db_err}"); st.session_state.local_entrega_history.append(datos_historial_et)
 
                 barra_et.progress(80, text="📧 Transmitiendo Correo...")
-                remitente = st.secrets["EMAIL_USER"]
-                password = st.secrets["EMAIL_PASS"]
-                servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.tridentech.cl")
-                puerto_smtp = st.secrets.get("SMTP_PORT", 587)
+                try:
+                    remitente = st.secrets["EMAIL_USER"]
+                    password = st.secrets["EMAIL_PASS"]
+                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                    puerto_smtp = int(st.secrets.get("SMTP_PORT", 587))
+                except Exception:
+                    remitente = os.environ.get("EMAIL_USER")
+                    password = os.environ.get("EMAIL_PASS")
+                    servidor_smtp = os.environ.get("SMTP_SERVER", "mail.incinel.cl")
+                    puerto_smtp = int(os.environ.get("SMTP_PORT", 587))
 
                 msg = MIMEMultipart()
                 msg['From'] = remitente
