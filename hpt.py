@@ -94,11 +94,9 @@ def init_connection():
         raise ValueError("Credenciales de Supabase no encontradas.")
         
     # --- LIMPIEZA AGRESIVA ANTI-ERRORES ---
-    # Elimina corchetes, paréntesis, espacios y comillas que Render o el chat hayan pegado accidentalmente.
     url = re.sub(r'[\[\]\(\)\s\'"]', '', str(url))
     key = re.sub(r'[\[\]\(\)\s\'"]', '', str(key))
     
-    # Si la URL quedó doble por el formato Markdown (ej: https://...https://...), toma solo la primera.
     if url.count("http") > 1:
         url = url[:url.find("http", 4)]
         
@@ -584,7 +582,6 @@ elif st.session_state.current_page == 'hpt_nuevo':
                 tc_fecha = st.date_input("Fecha Difusión")
                 tc_relator = st.text_input("Nombre Relator (Piloto)", value=st.session_state.current_user)
                 
-                # Autocompletado del RUT
                 rut_defecto = st.session_state.db_usuarios.get(st.session_state.current_user, {}).get("rut", "")
                 tc_rut = st.text_input("RUT Relator", value=rut_defecto)
             with col2:
@@ -969,10 +966,11 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, ponton_rd, border=1, ln=True)
             
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, empresa_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, encargado_rd[:35] if encargado_rd else "N/A", border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
+            # --- AQUÍ ESTÁ LA LÍNEA CORREGIDA ---
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
