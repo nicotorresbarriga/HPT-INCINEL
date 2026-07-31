@@ -1341,7 +1341,7 @@ elif st.session_state.current_page == 'entrega_turno':
     st.markdown("---"); st.header("6. Evidencia Fotográfica y Firmas")
     imagenes_cargadas = st.file_uploader("Cargar imágenes de equipos/terreno (Opcional)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     st.write("✍️ Firma Piloto ROV Saliente"); canvas_piloto = st_canvas(fill_color="rgba(255, 255, 255, 0)", stroke_width=2, stroke_color="#000", background_color="#FFF", height=120, width=300, drawing_mode="freedraw", key="canvas_et")
-    correo_destino_et = st.text_input("Correo electrónico del destinatario (Jefatura o Piloto Entrante)", placeholder="jefatura@blumar.com")
+    correo_destino_et = st.text_input("Correo electrónico del destinatario", value="reportesrovincinel@gmail.com")
 
     if st.button("Guardar, Generar PDF y Enviar", type="primary", use_container_width=True):
         if not piloto_saliente or not piloto_entrante: st.error("Error: Los campos 'Piloto Entrante' y 'Piloto Saliente' son obligatorios.")
@@ -1412,7 +1412,7 @@ elif st.session_state.current_page == 'entrega_turno':
 
                 msg = MIMEMultipart()
                 msg['From'] = remitente
-                msg['To'] = "contacto@techtrident.cl"
+                msg['To'] = correo_destino_et
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta entrega formal de turno.", 'plain'))
@@ -1421,26 +1421,36 @@ elif st.session_state.current_page == 'entrega_turno':
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
                 
                 try:
-                    # TIMEOUT AÑADIDO A ENTREGA DE TURNO
-                    server = smtplib.SMTP(servidor_smtp, puerto_smtp, timeout=10)
+                    # 1. ENVÍO DE CORREO (Aumentamos tiempo a 15 seg para el plan gratuito)
+                    server = smtplib.SMTP(servidor_smtp, puerto_smtp, timeout=15)
                     server.starttls()
                     server.login(remitente, password)
                     server.send_message(msg)
                     server.quit()
+                    correo_enviado = True
+                except Exception as e_smtp:
+                    correo_enviado = False
+                    st.warning(f"El PDF se generó, pero hubo un retraso de red al enviar el correo: {e_smtp}")
                     
-                    import imaplib
-                    imap = imaplib.IMAP4_SSL(servidor_smtp, 993, timeout=10)
-                    imap.login(remitente, password)
-                    imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
-                    imap.logout()
-                except Exception as e_mail:
-                    st.warning("El PDF fue generado y respaldado en BD, pero hubo un retraso enviando el correo (El destinatario no lo recibió).")
-                    print(f"Error SMTP/IMAP: {e_mail}")
+                if correo_enviado:
+                    try:
+                        # 2. SINCRONIZACIÓN IMAP AISLADA (Si falla por el servidor gratis, no bloquea el aviso de éxito)
+                        import imaplib
+                        imap = imaplib.IMAP4_SSL(servidor_smtp, 993, timeout=5)
+                        imap.login(remitente, password)
+                        imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
+                        imap.logout()
+                    except Exception:
+                        pass
                 
                 if os.path.exists(firma_path_et): os.remove(firma_path_et)
                 
                 barra_et.progress(100, text="✅ Turno Entregado.")
-                time.sleep(0.5); barra_et.empty(); st.success(f"Reporte de Entrega de Turno enviado exitosamente.")
+                time.sleep(0.5); barra_et.empty()
+                
+                if correo_enviado:
+                    st.success(f"Reporte de Entrega de Turno generado y enviado con éxito a {correo_destino_et}.")
+                    
                 with open(archivo_pdf_et, "rb") as f: st.download_button("📥 Descargar Copia Local PDF", data=f.read(), file_name=archivo_pdf_et, mime="application/pdf")
             except Exception as e:
                 barra_et.empty(); st.error(f"Error Técnico: {e}")
