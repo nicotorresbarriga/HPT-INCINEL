@@ -18,6 +18,7 @@ import uuid
 import urllib.request
 import zipfile
 import io
+import gc # Añadido para liberar memoria RAM
 from supabase import create_client, Client
 
 st.set_page_config(
@@ -169,14 +170,50 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
+    """Busca el archivo de logo de TechTrident de forma absoluta y segura."""
+    directorio_actual = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     posibles = [
-        "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "logo_techtrident.JPG",
-        "Logo_techtrident.png", "Logo_TechTrident.png"
+        "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "Logo_techtrident.png",
+        os.path.join(directorio_actual, "logo_techtrident.png"),
+        os.path.join(directorio_actual, "logo_techtrident.PNG")
     ]
     for p in posibles:
         if os.path.exists(p):
-            return p
+            try:
+                with Image.open(p) as img:
+                    img.verify()
+                return p
+            except Exception:
+                continue
     return None
+
+def optimizar_imagen_ram(file_bytes_or_path, max_dim=800):
+    """Comprime imágenes pesadas en memoria RAM para evitar que el servidor colapse (OOM)."""
+    try:
+        if isinstance(file_bytes_or_path, bytes):
+            img = Image.open(io.BytesIO(file_bytes_or_path))
+        else:
+            img = Image.open(file_bytes_or_path)
+            
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            img = img.convert('RGB')
+            
+        # Achicamos la foto si es inmensa (ej: 4000x3000 -> 800x600)
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        
+        output_buffer = io.BytesIO()
+        # Guardamos comprimido en calidad 75% (No se nota en un PDF y ahorra muchísima memoria)
+        img.save(output_buffer, format='JPEG', quality=75, optimize=True)
+        output_buffer.seek(0)
+        
+        # Limpiar la imagen original de la memoria RAM pesada
+        img.close()
+        gc.collect() 
+        
+        return output_buffer.getvalue()
+    except Exception as e:
+        # Si algo falla, retorna lo original para no romper el flujo
+        return file_bytes_or_path if isinstance(file_bytes_or_path, bytes) else open(file_bytes_or_path, "rb").read()
 
 def procesar_firma(canvas_obj, filename):
     if canvas_obj.image_data is not None:
@@ -320,19 +357,21 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     if imagenes_subidas:
         pdf.add_page()
-        pdf.set_font("Arial", 'B', 10)
+        pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
-        pdf.cell(190, 10, "  7. EVIDENCIA FOTOGRAFICA", border=0, ln=True, fill=True)
+        pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=0, ln=True, fill=True); pdf.ln(5)
         pdf.set_text_color(0, 0, 0)
-        pdf.ln(5)
         col_img = 0; row_y = pdf.get_y(); max_h_row = 0
         for img_file in imagenes_subidas:
-            temp_path = f"temp_{uuid.uuid4().hex[:6]}_{img_file.name}"
-            with open(temp_path, "wb") as f: f.write(img_file.getbuffer())
+            temp_path = f"temp_{uuid.uuid4().hex[:6]}.jpg"
+            
+            # OPTIMIZADOR DE RAM PARA ENTREGAS DE TURNO
+            bytes_optimizados = optimizar_imagen_ram(img_file.getvalue())
+            
+            with open(temp_path, "wb") as f: 
+                f.write(bytes_optimizados)
+                
             with Image.open(temp_path) as pil_img:
-                if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
-                    pil_img = pil_img.convert('RGB')
-                    pil_img.save(temp_path)
                 w_px, h_px = pil_img.size; aspect = h_px / w_px
                 if aspect > (80 / 85): h_mm = 80; w_mm = 80 / aspect
                 else: w_mm = 85; h_mm = 85 * aspect
@@ -852,13 +891,14 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         pdf.ln(5)
                         
                         temp_img_path = f"temp_evidencia_{uuid.uuid4().hex[:6]}.jpg"
+                        
+                        # OPTIMIZADOR DE RAM PARA EVIDENCIA HPT
+                        bytes_optimizados_hpt = optimizar_imagen_ram(data['evidencia_puerto'])
+                        
                         with open(temp_img_path, "wb") as f:
-                            f.write(data['evidencia_puerto'])
+                            f.write(bytes_optimizados_hpt)
                             
                         with Image.open(temp_img_path) as pil_img:
-                            if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
-                                pil_img = pil_img.convert('RGB')
-                                pil_img.save(temp_img_path)
                             w_px, h_px = pil_img.size
                             aspect = h_px / w_px
                             w_mm = 160
@@ -934,19 +974,21 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                     encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf}"); msg.attach(part)
                     
-                    server = smtplib.SMTP(servidor_smtp, puerto_smtp)
-                    server.starttls()
-                    server.login(remitente, password)
-                    server.send_message(msg)
-                    server.quit()
-
                     try:
-                        imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
+                        # TIMEOUT DE 10 SEGUNDOS AÑADIDO PARA EVITAR CONGELAMIENTO EN LA NUBE
+                        server = smtplib.SMTP(servidor_smtp, puerto_smtp, timeout=10)
+                        server.starttls()
+                        server.login(remitente, password)
+                        server.send_message(msg)
+                        server.quit()
+
+                        imap = imaplib.IMAP4_SSL(servidor_smtp, 993, timeout=10)
                         imap.login(remitente, password)
                         imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
                         imap.logout()
-                    except Exception:
-                        pass
+                    except Exception as e_mail:
+                        st.warning("El PDF fue generado y respaldado en BD, pero hubo un retraso enviando el correo (El destinatario no lo recibió).")
+                        print(f"Error SMTP/IMAP: {e_mail}")
 
                     if os.path.exists(f_serv): os.remove(f_serv)
                     if os.path.exists(f_enc): os.remove(f_enc)
@@ -1156,12 +1198,14 @@ elif st.session_state.current_page == 'reporte_diario':
                 pdf_rd.ln(5)
                 
                 temp_img_path = f"temp_evidencia_rd_{uuid.uuid4().hex[:6]}.jpg"
-                with open(temp_img_path, "wb") as f: f.write(evidencia_img_rd.getvalue())
+                
+                # OPTIMIZADOR DE RAM PARA EVIDENCIA REPORTE DIARIO
+                bytes_optimizados_rd = optimizar_imagen_ram(evidencia_img_rd.getvalue())
+                
+                with open(temp_img_path, "wb") as f: 
+                    f.write(bytes_optimizados_rd)
                     
                 with Image.open(temp_img_path) as pil_img:
-                    if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
-                        pil_img = pil_img.convert('RGB')
-                        pil_img.save(temp_img_path)
                     w_px, h_px = pil_img.size; aspect = h_px / w_px
                     w_mm = 160; h_mm = w_mm * aspect
                     if h_mm > 180: h_mm = 180; w_mm = h_mm / aspect
@@ -1375,20 +1419,22 @@ elif st.session_state.current_page == 'entrega_turno':
                 with open(archivo_pdf_et, "rb") as attachment: part = MIMEBase("application", "octet-stream"); part.set_payload(attachment.read())
                 encoders.encode_base64(part); part.add_header("Content-Disposition", f"attachment; filename={archivo_pdf_et}"); msg.attach(part)
                 
-                server = smtplib.SMTP(servidor_smtp, puerto_smtp)
-                server.starttls()
-                server.login(remitente, password)
-                server.send_message(msg)
-                server.quit()
-
                 try:
+                    # TIMEOUT AÑADIDO A ENTREGA DE TURNO
+                    server = smtplib.SMTP(servidor_smtp, puerto_smtp, timeout=10)
+                    server.starttls()
+                    server.login(remitente, password)
+                    server.send_message(msg)
+                    server.quit()
+                    
                     import imaplib
-                    imap = imaplib.IMAP4_SSL(servidor_smtp, 993)
+                    imap = imaplib.IMAP4_SSL(servidor_smtp, 993, timeout=10)
                     imap.login(remitente, password)
                     imap.append('INBOX.Sent', '\\Seen', imaplib.Time2Internaldate(time.time()), msg.as_bytes())
                     imap.logout()
-                except Exception:
-                    pass
+                except Exception as e_mail:
+                    st.warning("El PDF fue generado y respaldado en BD, pero hubo un retraso enviando el correo (El destinatario no lo recibió).")
+                    print(f"Error SMTP/IMAP: {e_mail}")
                 
                 if os.path.exists(firma_path_et): os.remove(firma_path_et)
                 
