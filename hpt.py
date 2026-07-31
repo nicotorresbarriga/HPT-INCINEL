@@ -27,6 +27,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ----------------- NUEVO ESTILO DE BOTONES 3D AZUL MARINO -----------------
 st.markdown(
     """
     <style>
@@ -39,22 +40,36 @@ st.markdown(
         color: #ffffff !important;
         font-family: 'Inter', sans-serif;
     }
+    
+    /* Botones 3D Personalizados */
     .stButton>button {
-        background-color: #00a8cc;
+        background: linear-gradient(to bottom, #1a5b9c 0%, #0f3769 100%);
         color: white;
-        border-radius: 8px;
-        border: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-        transition: all 0.3s ease;
-        font-weight: bold;
+        border-radius: 12px;
+        border: 1px solid #0a2445;
+        box-shadow: inset 0 2px 0 rgba(255,255,255,0.15), 0 6px 0 #0a2445, 0 8px 12px rgba(0,0,0,0.5);
+        transition: all 0.1s ease;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
     .stButton>button:hover {
-        background-color: #007a99;
-        box-shadow: 0 6px 8px rgba(0,0,0,0.5);
+        background: linear-gradient(to bottom, #1e69b3 0%, #12417a 100%);
+        box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), 0 6px 0 #0a2445, 0 10px 15px rgba(0,0,0,0.6);
+        color: white;
+        transform: translateY(-1px);
     }
+    .stButton>button:active {
+        background: linear-gradient(to bottom, #0f3769 0%, #1a5b9c 100%);
+        box-shadow: inset 0 2px 0 rgba(0,0,0,0.1), 0 0px 0 #0a2445, 0 2px 4px rgba(0,0,0,0.4);
+        transform: translateY(6px);
+    }
+
     .stTextInput>div>div>input, .stSelectbox>div>div>select, .stTextArea>div>div>textarea, .stNumberInput>div>div>input {
         border-radius: 6px;
-        border: 1px solid #00a8cc;
+        border: 1px solid #0f3769;
         color: #1a202c !important;
         background-color: #f8fafc !important;
         font-weight: 500;
@@ -93,7 +108,6 @@ def init_connection():
     if not url or not key:
         raise ValueError("Credenciales de Supabase no encontradas.")
         
-    # --- LIMPIEZA AGRESIVA ANTI-ERRORES ---
     url = re.sub(r'[\[\]\(\)\s\'"]', '', str(url))
     key = re.sub(r'[\[\]\(\)\s\'"]', '', str(key))
     
@@ -102,7 +116,6 @@ def init_connection():
         
     return create_client(url, key)
 
-# Bases de datos dinámicas en sesión
 if 'db_usuarios' not in st.session_state: 
     st.session_state.db_usuarios = {
         "Ntorres": {"pass": "17909926", "rut": "17.909.926-8"}, 
@@ -111,7 +124,7 @@ if 'db_usuarios' not in st.session_state:
 if 'db_centros_areas' not in st.session_state: 
     st.session_state.db_centros_areas = {"Centro Punta Vergara": "Area Austral"}
 if 'db_centros_correos' not in st.session_state: 
-    st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@tridentech.cl"}
+    st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@techtrident.cl"}
 
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
@@ -157,8 +170,8 @@ def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
     posibles = [
-        "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.JPG",
-        "Logo_tridentech.png", "logo_Tridentech.png"
+        "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "logo_techtrident.JPG",
+        "Logo_techtrident.png", "Logo_TechTrident.png"
     ]
     for p in posibles:
         if os.path.exists(p):
@@ -175,7 +188,8 @@ def procesar_firma(canvas_obj, filename):
         return True
     return False
 
-def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None):
+# ---------------- NUEVO MOTOR PDF DE ENTREGA DE TURNO (ESTANDARIZADO) ----------------
+def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None, folio="", correlativo=""):
     pdf = FPDF()
     pdf.set_margins(10, 10, 10)
     pdf.set_auto_page_break(auto=True, margin=20) 
@@ -185,53 +199,132 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
 
     if logo_filename and os.path.exists(logo_filename):
         try:
-            pdf.image(logo_filename, x=10, y=10, h=20)
+            pdf.image(logo_filename, x=10, y=8, h=20)
         except Exception:
             pass
-        
-    pdf.set_y(35) 
-    pdf.set_font("Helvetica", 'B', 15)
+            
+    pdf.set_y(32) 
+    pdf.set_font("Arial", 'B', 14)
     pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
-    pdf.cell(190, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=0, ln=True, align='C', fill=True)
+    pdf.cell(0, 10, "REPORTE FORMAL DE ENTREGA DE TURNO - ROV", border=0, ln=True, align='C', fill=True)
     
     hora_chile = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
     fecha_hora_actual = hora_chile.strftime("%Y-%m-%d %H:%M:%S")
-    piloto_saliente = datos.get('1. Información General', {}).get('Piloto_Saliente', 'Desconocido')
-    pdf.set_font("Helvetica", 'I', 8); pdf.set_text_color(128, 128, 128)
-    pdf.cell(190, 6, f"Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_saliente}", border=0, ln=True, align='C')
-    pdf.ln(2)
     
-    for seccion, campos in datos.items():
-        if pdf.get_y() > 250: pdf.add_page()
-        pdf.ln(3); pdf.set_font("Helvetica", 'B', 11)
-        pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255) 
-        pdf.cell(190, 8, f"  {seccion.upper()}", border=0, ln=True, fill=True)
-        pdf.ln(2) # Respiro visual agregado
-        for clave, valor in campos.items():
-            nombre_campo = clave.replace('_', ' ')
-            if pdf.get_y() > 265: pdf.add_page()
-            pdf.set_font("Helvetica", 'B', 9); pdf.set_fill_color(245, 245, 245); pdf.set_text_color(0, 0, 0)
-            pdf.cell(190, 8, f" {nombre_campo}:", border=1, ln=True, fill=True)
-            pdf.set_font("Helvetica", '', 9)
-            if isinstance(valor, list):
-                for i in range(0, len(valor), 2):
-                    item1 = f" - {valor[i]}".encode('latin-1', 'replace').decode('latin-1')
-                    item2 = f" - {valor[i+1]}".encode('latin-1', 'replace').decode('latin-1') if i+1 < len(valor) else ""
-                    pdf.cell(95, 8, item1, border="L", ln=0)
-                    pdf.cell(95, 8, item2, border="R", ln=1)
-                x = pdf.get_x(); y = pdf.get_y()
-                pdf.line(x, y, x+190, y); pdf.ln(1)
-            else:
-                valor_seguro = str(valor).strip() if str(valor).strip() != "" else "Sin registro o sin novedades."
-                valor_seguro = valor_seguro.encode('latin-1', 'replace').decode('latin-1')
-                pdf.multi_cell(190, 8, txt=f" {valor_seguro}", border=1); pdf.ln(1) 
+    d1 = datos.get("1. Información General", {})
+    piloto_saliente = d1.get("Piloto_Saliente", "Desconocido")
+    
+    pdf.set_font("Arial", 'I', 9); pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 8, f"Folio: {folio} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_saliente}", border=0, ln=True, align='C')
+    
+    pdf.set_font("Arial", "B", 12)
+    pdf.set_text_color(15, 55, 105)
+    pdf.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
+    pdf.ln(5)
+    
+    h_cell = 8
+    
+    def print_section_header(title):
+        pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255); pdf.set_font("Arial", "B", 10)
+        pdf.cell(190, 8, f"  {title}", border=0, ln=True, fill=True)
+        pdf.ln(2)
+        pdf.set_text_color(0, 0, 0)
+
+    def print_row_2(l1, v1, l2, v2):
+        pdf.set_font("Arial", "B", 9); pdf.cell(35, h_cell, l1, border=1)
+        pdf.set_font("Arial", "", 9); pdf.cell(60, h_cell, str(v1)[:35], border=1)
+        pdf.set_font("Arial", "B", 9); pdf.cell(35, h_cell, l2, border=1)
+        pdf.set_font("Arial", "", 9); pdf.cell(60, h_cell, str(v2)[:35], border=1, ln=True)
+
+    def print_multiline(label, text):
+        pdf.set_fill_color(240, 240, 240); pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "B", 9)
+        pdf.cell(190, 8, f" {label}:", border=1, ln=True, fill=True)
+        pdf.set_font("Arial", "", 9)
+        text_safe = str(text).strip().encode('latin-1', 'replace').decode('latin-1') if str(text).strip() else "Sin registro o sin novedades."
+        x_s = pdf.get_x(); y_s = pdf.get_y()
+        pdf.multi_cell(190, 6, txt=f" {text_safe}", border=0)
+        y_e = pdf.get_y(); h_r = y_e - y_s
+        pdf.set_xy(x_s, y_s); pdf.cell(190, max(h_r, 8), "", border=1, ln=True); pdf.set_xy(x_s, y_s + max(h_r, 8))
+
+    def print_list(label, lst):
+        pdf.set_fill_color(240, 240, 240); pdf.set_text_color(0, 0, 0); pdf.set_font("Arial", "B", 9)
+        pdf.cell(190, 8, f" {label}:", border=1, ln=True, fill=True)
+        pdf.set_font("Arial", "", 9)
+        if not lst or (len(lst)==1 and "Ningun" in lst[0]):
+            pdf.cell(190, 8, " - Sin registros asignados.", border=1, ln=True)
+        else:
+            for i in range(0, len(lst), 2):
+                i1 = f" - {lst[i]}".encode('latin-1', 'replace').decode('latin-1')
+                i2 = f" - {lst[i+1]}".encode('latin-1', 'replace').decode('latin-1') if i+1 < len(lst) else ""
+                b_str = "L,B" if i+2 >= len(lst) else "L"
+                b_str2 = "R,B" if i+2 >= len(lst) else "R"
+                pdf.cell(95, 8, i1, border=b_str, ln=0)
+                pdf.cell(95, 8, i2, border=b_str2, ln=1)
+
+    # 1. INFO GENERAL
+    print_section_header("1. INFORMACION GENERAL")
+    print_row_2("Piloto Entrante:", d1.get("Piloto_Entrante"), "Piloto Saliente:", d1.get("Piloto_Saliente"))
+    print_row_2("Fecha:", d1.get("Fecha"), "Centro:", d1.get("Centro"))
+    pdf.set_font("Arial", "B", 9); pdf.cell(35, h_cell, "Area Asignada:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, h_cell, str(d1.get("Área"))[:80], border=1, ln=True)
+    pdf.ln(4)
+
+    # 2. EQUIPOS
+    d2 = datos.get("2. Estado del Equipo", {})
+    if pdf.get_y() > 240: pdf.add_page()
+    print_section_header("2. ESTADO DE LOS EQUIPOS (ROV)")
+    print_row_2("Modelo ROV:", d2.get("Modelo_ROV"), "Estado ROV:", d2.get("Estado_ROV"))
+    print_row_2("Controlador:", d2.get("Estado_Controlador"), "Cable Umbilical:", d2.get("Cable_Umbilical"))
+    print_multiline("Observaciones de Equipos", d2.get("Observaciones_Equipos"))
+    pdf.ln(4)
+
+    # 3. TERRENO
+    d3 = datos.get("3. Terreno", {})
+    if pdf.get_y() > 240: pdf.add_page()
+    print_section_header("3. INFRAESTRUCTURA DE TERRENO")
+    pdf.set_font("Arial", "B", 9); pdf.cell(45, h_cell, "Equipamiento Presente:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(145, h_cell, str(d3.get("Equipamiento_Presente"))[:100], border=1, ln=True)
+    pdf.set_font("Arial", "B", 9); pdf.cell(45, h_cell, "Estado General:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(145, h_cell, str(d3.get("Estado_del_Equipamiento"))[:100], border=1, ln=True)
+    print_multiline("Observaciones de Infraestructura", d3.get("Observaciones_Equipamiento"))
+    pdf.ln(4)
+
+    # 4 & 5. INVENTARIO
+    d4 = datos.get("4. Herramientas", {})
+    d5 = datos.get("5. Materiales de Mantención", {})
+    if pdf.get_y() > 220: pdf.add_page()
+    print_section_header("4. INVENTARIO DE MANTENCION")
+    print_list("Herramientas Presentes", d4.get("Herramientas_Presentes", []))
+    print_list("Herramientas Faltantes (Reportadas)", d4.get("Herramientas_Faltantes", []))
+    print_list("Materiales/Insumos Presentes", d5.get("Materiales_Presentes", []))
+    print_list("Materiales/Insumos Faltantes", d5.get("Materiales_Faltantes", []))
+    pdf.ln(4)
+
+    # 6. OPERATIVA
+    d6 = datos.get("6. Operativa de Turno (14 días)", {})
+    if pdf.get_y() > 200: pdf.add_page()
+    print_section_header("5. RESUMEN OPERATIVO DEL TURNO (14 DIAS)")
+    print_multiline("Faena Principal Realizada", d6.get("Faena_Realizada"))
+    print_multiline("Alertas del Centro de Cultivo", d6.get("Alertas_del_Centro"))
+    print_multiline("Tareas Pendientes (Para Piloto Entrante)", d6.get("Tareas_Pendientes"))
+    print_multiline("Observaciones Generales", d6.get("Observaciones_Generales"))
+    pdf.ln(8)
+
+    # FIRMAS
+    if pdf.get_y() > 220: pdf.add_page()
+    pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 10); pdf.cell(190, 8, "  6. FIRMAS DE RESPONSABILIDAD", border=0, ln=True, fill=True)
+    pdf.ln(2); pdf.set_text_color(0, 0, 0)
+    
+    pdf.cell(190, 25, "", border=1, ln=True)
+    if firma_path and os.path.exists(firma_path):
+        pdf.image(firma_path, x=85, y=pdf.get_y()-22, w=40, h=18)
+    pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, f"Firma Piloto ROV Saliente: {piloto_saliente}", border=1, align="C", ln=True)
 
     if imagenes_subidas:
         pdf.add_page()
-        pdf.set_font("Helvetica", 'B', 11)
+        pdf.set_font("Arial", 'B', 10)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
-        pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=0, ln=True, fill=True); pdf.ln(5)
+        pdf.cell(190, 10, "  7. EVIDENCIA FOTOGRAFICA", border=0, ln=True, fill=True)
         pdf.set_text_color(0, 0, 0)
+        pdf.ln(5)
         col_img = 0; row_y = pdf.get_y(); max_h_row = 0
         for img_file in imagenes_subidas:
             temp_path = f"temp_{uuid.uuid4().hex[:6]}_{img_file.name}"
@@ -252,21 +345,14 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
             os.remove(temp_path) 
         pdf.set_y(row_y + max_h_row + 10)
 
-    if pdf.get_y() > 230: pdf.add_page()
-    y_img = pdf.get_y() + 10
-    if firma_path and os.path.exists(firma_path): pdf.image(firma_path, x=65, y=y_img, w=60, h=25)
-    pdf.set_y(y_img + 25); pdf.set_font("Helvetica", 'B', 9)
-    pdf.cell(190, 5, "_______________________", border=0, ln=1, align='C')
-    pdf.cell(190, 5, "Firma Piloto ROV Saliente", border=0, ln=1, align='C')
-
     pdf.set_auto_page_break(auto=False)
     pdf.set_y(-18)
-    pdf.set_font("Helvetica", 'B', 8)
+    pdf.set_font("Arial", "B", 8)
     pdf.set_text_color(15, 55, 105)
-    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align='C', ln=1)
-    pdf.set_font("Helvetica", 'I', 8)
+    pdf.cell(190, 4, "TECHTRIDENT - NTORRES@TECHTRIDENT.CL - WWW.TECHTRIDENT.CL", border=0, align="C", ln=1)
+    pdf.set_font("Arial", "I", 8)
     pdf.set_text_color(128, 128, 128)
-    pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align='C')
+    pdf.cell(190, 4, "TechTrident 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
     pdf.output(nombre_archivo)
     return nombre_archivo
@@ -377,7 +463,6 @@ elif st.session_state.current_page == 'main_menu':
                         st.session_state.db_usuarios[new_user] = {"pass": new_pass, "rut": new_rut}
                         st.success(f"Piloto {new_user} guardado correctamente.")
                 
-                # --- NUEVO: MODULO PARA ELIMINAR PILOTOS ---
                 st.markdown("---")
                 st.write("**Eliminar Piloto**")
                 pilotos_para_eliminar = [p for p in st.session_state.db_usuarios.keys() if p != 'admin']
@@ -406,7 +491,6 @@ elif st.session_state.current_page == 'main_menu':
                         st.session_state.db_centros_correos[new_centro] = new_correo
                         st.success(f"Centro {new_centro} guardado correctamente.")
 
-                # --- NUEVO: MODULO PARA ELIMINAR CENTROS ---
                 st.markdown("---")
                 st.write("**Eliminar Centro**")
                 centros_existentes = list(st.session_state.db_centros_areas.keys())
@@ -791,10 +875,10 @@ elif st.session_state.current_page == 'hpt_nuevo':
                     pdf.set_y(-18)
                     pdf.set_font("Arial", "B", 8)
                     pdf.set_text_color(15, 55, 105)
-                    pdf.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
+                    pdf.cell(190, 4, "TECHTRIDENT - NTORRES@TECHTRIDENT.CL - WWW.TECHTRIDENT.CL", border=0, align="C", ln=1)
                     pdf.set_font("Arial", "I", 8)
                     pdf.set_text_color(128, 128, 128)
-                    pdf.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+                    pdf.cell(190, 4, "TechTrident 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
                     identificador_unico = str(uuid.uuid4())[:8]
                     archivo_pdf = f"HPT_{data.get('centro','').replace(' ', '_')}_{data.get('fecha')}_{identificador_unico}.pdf"
@@ -836,7 +920,7 @@ elif st.session_state.current_page == 'hpt_nuevo':
                         servidor_smtp = str(os.environ.get("SMTP_SERVER", "mail.incinel.cl")).strip()
                         puerto_smtp = int(os.environ.get("SMTP_PORT", 587))
                     
-                    correo_centro = "contacto@tridentech.cl"
+                    correo_centro = "contacto@techtrident.cl"
                     lista_destinatarios = [correo_centro]
                     
                     msg = MIMEMultipart()
@@ -1039,7 +1123,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.multi_cell(190, 6, txt=tarea_rd, border=0)
             y_end = pdf_rd.get_y()
             
-            alto_minimo = 25 # <-- REDUCIDO DE 80 A 25 PARA EVITAR CAJAS GIGANTES VACIAS
+            alto_minimo = 25 
             alto_real = y_end - y_start
             if alto_real < alto_minimo:
                 pdf_rd.set_xy(x_start, y_start)
@@ -1090,10 +1174,10 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_y(-18)
             pdf_rd.set_font("Arial", "B", 8)
             pdf_rd.set_text_color(15, 55, 105)
-            pdf_rd.cell(190, 4, "TRIDENTECH - NTORRES@TRIDENTECH.CL - WWW.TRIDENTECH.CL", border=0, align="C", ln=1)
+            pdf_rd.cell(190, 4, "TECHTRIDENT - NTORRES@TECHTRIDENT.CL - WWW.TECHTRIDENT.CL", border=0, align="C", ln=1)
             pdf_rd.set_font("Arial", "I", 8)
             pdf_rd.set_text_color(128, 128, 128)
-            pdf_rd.cell(190, 4, "TridenTech 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
+            pdf_rd.cell(190, 4, "TechTrident 2026©".encode('latin-1', 'replace').decode('latin-1'), border=0, align="C")
 
             identificador_unico_rd = str(uuid.uuid4())[:8]
             archivo_pdf_rd = f"Reporte_Diario_{centro_rd.replace(' ', '_')}_{fecha_rd}_{identificador_unico_rd}.pdf"
@@ -1239,8 +1323,19 @@ elif st.session_state.current_page == 'entrega_turno':
             nombre_base_et = f"Entrega_Turno_{centro_et.replace(' ', '_')}_{fecha_et}_{uuid.uuid4().hex[:6]}.pdf"
             
             try:
+                res_count = supabase.table('entrega_history').select('id', count='exact').execute()
+                correlativo_et = res_count.count + 1
+            except:
+                correlativo_et = len(st.session_state.local_entrega_history) + 1
+                
+            hora_chile = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
+            fecha_str = hora_chile.strftime("%Y%m%d")
+            hora_str = hora_chile.strftime("%H%M")
+            folio_et = f"ET-{fecha_str}-{correlativo_et:03d}-{hora_str}"
+            
+            try:
                 logo_tridentech = obtener_ruta_logo()
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas)
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas, folio=folio_et, correlativo=correlativo_et)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
@@ -1272,7 +1367,7 @@ elif st.session_state.current_page == 'entrega_turno':
 
                 msg = MIMEMultipart()
                 msg['From'] = remitente
-                msg['To'] = "contacto@tridentech.cl"
+                msg['To'] = "contacto@techtrident.cl"
                 msg['Bcc'] = ", ".join(CORREOS_OCULTOS + [remitente])
                 msg['Subject'] = f"INFO: Entrega de Turno ROV - {centro_et}"
                 msg.attach(MIMEText("Estimados muy buenas tardes, junto con saludar se adjunta entrega formal de turno.", 'plain'))
