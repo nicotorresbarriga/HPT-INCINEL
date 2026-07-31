@@ -5,6 +5,7 @@ import os
 import time
 import smtplib
 import imaplib
+import re
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -82,14 +83,24 @@ CLAVE_ADMIN = "9926"
 @st.cache_resource
 def init_connection():
     try:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
+        url = st.secrets.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "")
+        if not url: raise ValueError
     except Exception:
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_KEY")
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_KEY", "")
         
     if not url or not key:
-        raise ValueError("Credenciales de Supabase no encontradas en el servidor.")
+        raise ValueError("Credenciales de Supabase no encontradas.")
+        
+    # --- LIMPIEZA AGRESIVA ANTI-ERRORES ---
+    # Elimina corchetes, paréntesis, espacios y comillas que Render o el chat hayan pegado accidentalmente.
+    url = re.sub(r'[\[\]\(\)\s\'"]', '', str(url))
+    key = re.sub(r'[\[\]\(\)\s\'"]', '', str(key))
+    
+    # Si la URL quedó doble por el formato Markdown (ej: https://...https://...), toma solo la primera.
+    if url.count("http") > 1:
+        url = url[:url.find("http", 4)]
         
     return create_client(url, key)
 
@@ -112,13 +123,10 @@ RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) f
 RANGO_DURACION = ["5 minutos", "10 minutos", "15 minutos", "20 minutos", "25 minutos", "30 minutos"]
 RANGO_HORA_DIFUSION = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 13) for m in (0, 15, 30, 45) if not (h == 12 and m > 0)]
 
-# --- BLOQUE MODIFICADO PARA CAZAR EL ERROR ---
 try:
     supabase = init_connection()
-    st.sidebar.success("✅ Conexión a Supabase activa y funcionando.")
 except Exception as e:
-    st.sidebar.warning(f"⚠️ Advertencia: Conexión Supabase inactiva. ERROR REAL: {e}")
-# ---------------------------------------------
+    st.sidebar.warning(f"⚠️ Advertencia: Conexión Supabase inactiva.")
 
 if 'local_hpt_history' not in st.session_state: st.session_state.local_hpt_history = []
 if 'local_reportes_history' not in st.session_state: st.session_state.local_reportes_history = []
@@ -150,7 +158,6 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
-    """Busca estrictamente el archivo de logo de TechTrident. Tolerante a fallos y mayúsculas."""
     posibles = [
         "logo_tridentech.png", "logo_tridentech.PNG", "logo_tridentech.jpg", "logo_tridentech.JPG",
         "Logo_tridentech.png", "logo_Tridentech.png"
@@ -276,7 +283,6 @@ if not st.session_state.logged_in:
             except Exception:
                 pass
         else:
-            # Respaldo si no encuentra el logo
             st.markdown("<h1 style='text-align: center; color: #00a8cc;'>⚓ TechTrident</h1>", unsafe_allow_html=True)
         
         st.markdown("<h3 style='text-align: center; color: white; margin-bottom: 20px;'>Portal Operativo ROV</h3>", unsafe_allow_html=True)
@@ -778,14 +784,14 @@ elif st.session_state.current_page == 'hpt_nuevo':
 
                     barra_carga.progress(60, text="📧 Enviando PDF...")
                     try:
-                        remitente = st.secrets["EMAIL_USER"]
-                        password = st.secrets["EMAIL_PASS"]
-                        servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                        remitente = str(st.secrets.get("EMAIL_USER", "")).strip()
+                        password = str(st.secrets.get("EMAIL_PASS", "")).strip()
+                        servidor_smtp = str(st.secrets.get("SMTP_SERVER", "mail.incinel.cl")).strip()
                         puerto_smtp = int(st.secrets.get("SMTP_PORT", 587))
                     except Exception:
-                        remitente = os.environ.get("EMAIL_USER")
-                        password = os.environ.get("EMAIL_PASS")
-                        servidor_smtp = os.environ.get("SMTP_SERVER", "mail.incinel.cl")
+                        remitente = str(os.environ.get("EMAIL_USER", "")).strip()
+                        password = str(os.environ.get("EMAIL_PASS", "")).strip()
+                        servidor_smtp = str(os.environ.get("SMTP_SERVER", "mail.incinel.cl")).strip()
                         puerto_smtp = int(os.environ.get("SMTP_PORT", 587))
                     
                     correo_centro = "contacto@tridentech.cl"
@@ -946,9 +952,8 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "I", 9); pdf_rd.set_text_color(128, 128, 128)
             pdf_rd.cell(0, 8, f"Folio: {folio_str} | Sello de Auditoría Inmutable: Generado el {fecha_hora_actual} por {piloto_rd}", border=0, ln=True, align="C")
             
-            # --- AQUÍ ESTÁ EL NÚMERO CORRELATIVO EN EL PDF ---
             pdf_rd.set_font("Arial", "B", 12)
-            pdf_rd.set_text_color(15, 55, 105) # Azul corporativo
+            pdf_rd.set_text_color(15, 55, 105) 
             pdf_rd.cell(0, 6, f"N° {correlativo}", border=0, ln=True, align="C")
             pdf_rd.ln(5)
             
@@ -964,10 +969,10 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, ponton_rd, border=1, ln=True)
             
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, empresa_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Encargado Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, encargado_rd[:35] if encargado_rd else "N/A", border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf.set_font("Arial", "", 9); pdf.rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
@@ -983,7 +988,6 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 10); pdf_rd.cell(190, 8, "Descripcion de la Tarea Realizada:", border=0, ln=True, fill=True)
             pdf_rd.set_text_color(0, 0, 0); pdf_rd.set_font("Arial", "", 9)
             
-            # --- AQUÍ ESTÁ EL ESPACIADO DINÁMICO QUE OCUPA LA HOJA ---
             x_start = pdf_rd.get_x()
             y_start = pdf_rd.get_y()
             pdf_rd.multi_cell(190, 6, txt=tarea_rd, border=0)
@@ -1209,14 +1213,14 @@ elif st.session_state.current_page == 'entrega_turno':
 
                 barra_et.progress(80, text="📧 Transmitiendo Correo...")
                 try:
-                    remitente = st.secrets["EMAIL_USER"]
-                    password = st.secrets["EMAIL_PASS"]
-                    servidor_smtp = st.secrets.get("SMTP_SERVER", "mail.incinel.cl")
+                    remitente = str(st.secrets.get("EMAIL_USER", "")).strip()
+                    password = str(st.secrets.get("EMAIL_PASS", "")).strip()
+                    servidor_smtp = str(st.secrets.get("SMTP_SERVER", "mail.incinel.cl")).strip()
                     puerto_smtp = int(st.secrets.get("SMTP_PORT", 587))
                 except Exception:
-                    remitente = os.environ.get("EMAIL_USER")
-                    password = os.environ.get("EMAIL_PASS")
-                    servidor_smtp = os.environ.get("SMTP_SERVER", "mail.incinel.cl")
+                    remitente = str(os.environ.get("EMAIL_USER", "")).strip()
+                    password = str(os.environ.get("EMAIL_PASS", "")).strip()
+                    servidor_smtp = str(os.environ.get("SMTP_SERVER", "mail.incinel.cl")).strip()
                     puerto_smtp = int(os.environ.get("SMTP_PORT", 587))
 
                 msg = MIMEMultipart()
