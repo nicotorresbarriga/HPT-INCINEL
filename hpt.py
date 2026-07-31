@@ -174,6 +174,7 @@ def obtener_ruta_logo():
     directorio_actual = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     posibles = [
         "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "Logo_techtrident.png",
+        "logo_tridentech.png", "logo_tridentech.PNG", "logo.png",
         os.path.join(directorio_actual, "logo_techtrident.png"),
         os.path.join(directorio_actual, "logo_techtrident.PNG")
     ]
