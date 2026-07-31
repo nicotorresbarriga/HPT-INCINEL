@@ -89,7 +89,7 @@ def init_connection():
         key = os.environ.get("SUPABASE_KEY")
         
     if not url or not key:
-        raise ValueError("Credenciales de Supabase no encontradas.")
+        raise ValueError("Credenciales de Supabase no encontradas en el servidor.")
         
     return create_client(url, key)
 
@@ -112,10 +112,13 @@ RANGO_TERMINO = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(16, 21) f
 RANGO_DURACION = ["5 minutos", "10 minutos", "15 minutos", "20 minutos", "25 minutos", "30 minutos"]
 RANGO_HORA_DIFUSION = [f"{str(h).zfill(2)}:{str(m).zfill(2)}" for h in range(6, 13) for m in (0, 15, 30, 45) if not (h == 12 and m > 0)]
 
+# --- BLOQUE MODIFICADO PARA CAZAR EL ERROR ---
 try:
     supabase = init_connection()
+    st.sidebar.success("✅ Conexión a Supabase activa y funcionando.")
 except Exception as e:
-    st.sidebar.warning("Advertencia: Conexión Supabase inactiva.")
+    st.sidebar.warning(f"⚠️ Advertencia: Conexión Supabase inactiva. ERROR REAL: {e}")
+# ---------------------------------------------
 
 if 'local_hpt_history' not in st.session_state: st.session_state.local_hpt_history = []
 if 'local_reportes_history' not in st.session_state: st.session_state.local_reportes_history = []
