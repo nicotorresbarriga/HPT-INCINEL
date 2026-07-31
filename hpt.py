@@ -21,7 +21,7 @@ import io
 from supabase import create_client, Client
 
 st.set_page_config(
-    page_title="Plataforma TechTrident",
+    page_title="Plataforma TridenTech",
     page_icon="⚓",
     layout="wide",
     initial_sidebar_state="collapsed"
