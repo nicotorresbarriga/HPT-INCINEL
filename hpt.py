@@ -88,6 +88,20 @@ st.markdown(
         color: #64748b !important;
         opacity: 1;
     }
+    
+    /* Hacer los recuadros de cantidad más pequeños en PC y Teléfono */
+    div[data-testid="stNumberInput"] {
+        max-width: 110px !important;
+    }
+    
+    /* Estilo profesional para el Panel de Control (Contenedores con borde) */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(180deg, rgba(15, 55, 105, 0.4) 0%, rgba(10, 36, 69, 0.8) 100%) !important;
+        border-radius: 16px !important;
+        border: 1px solid #1a5b9c !important;
+        padding: 0.5rem !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -469,63 +483,64 @@ elif st.session_state.current_page == 'main_menu':
     st.markdown("---")
     
     if st.session_state.current_user == 'admin':
-        st.subheader("📊 Panel de Control en Tiempo Real")
-        
-        try:
-            res_hpt = supabase.table('hpt_history').select('*').execute()
-            res_rd = supabase.table('reportes_history').select('*').execute()
-            df_hpt = pd.DataFrame(res_hpt.data)
-            df_rd = pd.DataFrame(res_rd.data)
-        except:
-            df_hpt = pd.DataFrame(st.session_state.local_hpt_history)
-            df_rd = pd.DataFrame(st.session_state.local_reportes_history)
-        
-        total_hpt = len(df_hpt) if not df_hpt.empty else 0
-        total_rd = len(df_rd) if not df_rd.empty else 0
-        total_reportes = total_hpt + total_rd
-        
-        hoy_str = str(datetime.date.today())
-        
-        hpt_hoy = df_hpt[df_hpt['fecha'] == hoy_str] if not df_hpt.empty and 'fecha' in df_hpt.columns else pd.DataFrame()
-        rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
-        
-        reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
-        pilotos_activos = [k for k in st.session_state.db_usuarios.keys() if k != 'admin'] 
-        
-        pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
-        pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
-        
-        pendientes_hpt = [p for p in pilotos_activos if p not in pilotos_con_hpt]
-        pendientes_rd = [p for p in pilotos_activos if p not in pilotos_con_rd]
-        
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Reportes Totales (Históricos)", total_reportes)
-        m2.metric("Reportes Enviados Hoy", reportes_hoy_total)
-        m3.metric("Pilotos Operativos Plataforma", len(pilotos_activos))
-        
-        st.markdown("**Estado de Reportabilidad del Día:**")
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            if pendientes_hpt:
-                st.warning(f"⚠️ **HPT Pendientes:** {', '.join(pendientes_hpt)}")
-            else:
-                st.success("✅ Todas las HPT del día enviadas.")
-        with col_p2:
-            if pendientes_rd:
-                st.warning(f"⚠️ **Reportes Diarios Pendientes:** {', '.join(pendientes_rd)}")
-            else:
-                st.success("✅ Todos los Reportes Diarios enviados.")
-                
-        hora_chile = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).time()
-        limite_hpt = datetime.time(9, 30)
-        limite_rd = datetime.time(20, 0)
-        
-        if hora_chile > limite_hpt and pendientes_hpt:
-            st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 09:30 AM y existen HPT pendientes por envío.")
-        
-        if hora_chile > limite_rd and pendientes_rd:
-            st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
+        with st.container(border=True):
+            st.subheader("📊 Panel de Control en Tiempo Real")
             
+            try:
+                res_hpt = supabase.table('hpt_history').select('*').execute()
+                res_rd = supabase.table('reportes_history').select('*').execute()
+                df_hpt = pd.DataFrame(res_hpt.data)
+                df_rd = pd.DataFrame(res_rd.data)
+            except:
+                df_hpt = pd.DataFrame(st.session_state.local_hpt_history)
+                df_rd = pd.DataFrame(st.session_state.local_reportes_history)
+            
+            total_hpt = len(df_hpt) if not df_hpt.empty else 0
+            total_rd = len(df_rd) if not df_rd.empty else 0
+            total_reportes = total_hpt + total_rd
+            
+            hoy_str = str(datetime.date.today())
+            
+            hpt_hoy = df_hpt[df_hpt['fecha'] == hoy_str] if not df_hpt.empty and 'fecha' in df_hpt.columns else pd.DataFrame()
+            rd_hoy = df_rd[df_rd['fecha'] == hoy_str] if not df_rd.empty and 'fecha' in df_rd.columns else pd.DataFrame()
+            
+            reportes_hoy_total = len(hpt_hoy) + len(rd_hoy)
+            pilotos_activos = [k for k in st.session_state.db_usuarios.keys() if k != 'admin'] 
+            
+            pilotos_con_hpt = hpt_hoy['usuario'].unique().tolist() if not hpt_hoy.empty else []
+            pilotos_con_rd = rd_hoy['usuario'].unique().tolist() if not rd_hoy.empty else []
+            
+            pendientes_hpt = [p for p in pilotos_activos if p not in pilotos_con_hpt]
+            pendientes_rd = [p for p in pilotos_activos if p not in pilotos_con_rd]
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Reportes Totales (Históricos)", total_reportes)
+            m2.metric("Reportes Enviados Hoy", reportes_hoy_total)
+            m3.metric("Pilotos Operativos Plataforma", len(pilotos_activos))
+            
+            st.markdown("**Estado de Reportabilidad del Día:**")
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                if pendientes_hpt:
+                    st.warning(f"⚠️ **HPT Pendientes:** {', '.join(pendientes_hpt)}")
+                else:
+                    st.success("✅ Todas las HPT del día enviadas.")
+            with col_p2:
+                if pendientes_rd:
+                    st.warning(f"⚠️ **Reportes Diarios Pendientes:** {', '.join(pendientes_rd)}")
+                else:
+                    st.success("✅ Todos los Reportes Diarios enviados.")
+                    
+            hora_chile = (datetime.datetime.utcnow() - datetime.timedelta(hours=4)).time()
+            limite_hpt = datetime.time(9, 30)
+            limite_rd = datetime.time(20, 0)
+            
+            if hora_chile > limite_hpt and pendientes_hpt:
+                st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 09:30 AM y existen HPT pendientes por envío.")
+            
+            if hora_chile > limite_rd and pendientes_rd:
+                st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
+                
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
             tab_pilotos, tab_centros, tab_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros", "🤖 Equipos ROV"])
             
@@ -1349,35 +1364,13 @@ elif st.session_state.current_page == 'entrega_turno':
     with c4: opciones_centros_et = list(st.session_state.db_centros_areas.keys()); centro_et = st.selectbox("Centro", opciones_centros_et)
     with c5: area_et = st.session_state.db_centros_areas.get(centro_et, "Desconocida"); st.text_input("Área Asignada", value=area_et, disabled=True)
 
-    st.markdown("---"); st.header("2. Gestión de Equipos ROV")
-    
-    rov_act_id = st.session_state.get('rov_activo', 1)
-    rov_stb_id = 2 if rov_act_id == 1 else 1
-    
-    rov_activo = st.session_state.db_rovs[rov_act_id]
-    rov_standby = st.session_state.db_rovs[rov_stb_id]
-    
-    c_rov1, c_rov2 = st.columns(2)
-    with c_rov1:
-        st.success(f"🟢 **Equipo en USO actual:**")
-        st.write(f"**Nombre:** {rov_activo['nombre']}")
-        st.write(f"**N° Serie ROV:** {rov_activo['serie_rov']}")
-        st.write(f"**N° Serie Controlador:** {rov_activo['serie_ctrl']}")
-        st.write(f"**Última Mantención:** {rov_activo['mantencion']}")
-        
-    with c_rov2:
-        st.warning(f"🟡 **Equipo Stand-by:**")
-        st.write(f"**Nombre:** {rov_standby['nombre']}")
-        st.write(f"**N° Serie ROV:** {rov_standby['serie_rov']}")
-        st.write(f"**N° Serie Controlador:** {rov_standby['serie_ctrl']}")
-        st.write(f"**Última Mantención:** {rov_standby['mantencion']}")
-        
-    st.write(" ")
-    c6, c8, c9 = st.columns(3)
-    with c6: estado_equipo = st.selectbox("Estado General del ROV en Uso", ["Bueno", "Regular", "Requiere cambio"])
+    st.markdown("---"); st.header("2. Equipos en Terreno (ROV)")
+    c6, c7, c8, c9 = st.columns(4)
+    with c6: equipo_rov = st.selectbox("Modelo de Equipo", ["DTG3", "MC Petrohue", "Chasing Promax", "Chasing Promax 2", "Fifish vs xpert"])
+    with c7: estado_equipo = st.selectbox("Estado General del ROV", ["Bueno", "Regular", "Requiere cambio"])
     with c8: estado_controlador = st.selectbox("Estado del Controlador", ["Bueno", "Regular", "Requiere cambio"])
     with c9: estado_umbilical = st.selectbox("Estado del Cable Umbilical", ["Bueno", "Regular", "Requiere cambio"])
-    obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas o anomalías detectadas...")
+    obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas...")
 
     st.markdown("---"); st.header("3. Equipamiento de Terreno"); st.write("Seleccione los elementos presentes en terreno:")
     c10, c11, c12, c13, c14 = st.columns(5)
@@ -1389,46 +1382,15 @@ elif st.session_state.current_page == 'entrega_turno':
     obs_equipamiento = st.text_area("Observaciones del Equipamiento", placeholder="Detalle daños...")
 
     st.markdown("---"); st.header("4. Inventario de Terreno")
-    herramientas_base = {
-        "Cuchillo de maniobra con funda (Bahco)": 1, 
-        "Cuchillo de maniobra sin funda (Bahco)": 1, 
-        "Araña de recuperación de acero inoxidable": 1, 
-        "Juego de llaves Allen": 1, 
-        "Pelacables": 1, 
-        "Alicate de corte diagonal": 1, 
-        "Alicate de punta fina / corte": 1, 
-        "Alicate para anillos de retención (circlips)": 1, 
-        "Alicate universal": 1, 
-        "Destornilladores": 6,
-        "Alicate de presión (caimán)": 1,
-        "Imán de recuperación (con cáncamo)": 1,
-        "Sierra de cuerda": 1
-    }
-    materiales_base = {
-        "Envase de vaselina": 1, 
-        "Tubo de grasa dieléctrica Loctite (cerrado)": 1, 
-        "Tubo de grasa/adhesivo Loctite (abierto/usado)": 1,
-        "Cajas con cotonitos": 1, 
-        "Tapones o conectores cilíndricos negros": 3, 
-        "Adhesivo industrial B-7000": 1, 
-        "Tubo de pegamento instantáneo (super glue)": 1,
-        "Afloja todo WD-40": 2, 
-        "Limpia contacto": 1, 
-        "Tapones para puerto de carga": 2, 
-        "Tapón o cubierta cuadrada pequeña": 1, 
-        "Protectores de sensor": 3, 
-        "Cinta aislante eléctrica": 1,
-        "Rollo de cinta de empalme (Splicing tape)": 1, 
-        "Caja de hojas de repuesto para cuchillo/bisturí Bauker": 1, 
-        "Piezas de repuesto grabber (negras con perforaciones)": 4
-    }
+    herramientas_base = {"Cuchillo de maniobra con funda (Bahco)": 1, "Cuchillo de maniobra sin funda (Bahco)": 1, "Araña de recuperación de acero inoxidable": 1, "Juego de llaves Allen": 1, "Pelacables": 1, "Alicate de corte diagonal": 1, "Alicate de punta fina (mangos rojo/azul)": 1, "Alicate para anillos de retención (circlips)": 1, "Alicate universal": 1, "Alicate de punta fina pequeño": 1, "Destornilladores": 6}
+    materiales_base = {"Frasco de vaselina": 1, "Tubos de grasa dieléctrica (Loctite)": 3, "Paquete de hisopos": 1, "Tapones o conectores cilíndricos negros": 3, "Adhesivo industrial B-7000": 1, "Lata de lubricante penetrante (Afloja Todo)": 1, "WD-40": 1, "Limpia contacto": 1, "Tapones para puerto de carga": 2, "Tapón o cubierta cuadrada pequeña": 1, "Protectores de sensor": 3, "Rollo de cinta de empalme (Splicing tape)": 1, "Cartucho de cuchillas de repuesto": 1, "Repuestos de brazo manipulador grabber": 4}
 
     resultados_inventario = {}; st.subheader("Herramientas")
     col_h1, col_h2 = st.columns(2); items_herr = list(herramientas_base.items())
     for i, (item, cant_esperada) in enumerate(items_herr):
         col = col_h1 if i < (len(items_herr) // 2 + len(items_herr) % 2) else col_h2
         with col:
-            c_check, c_num = st.columns([4, 1])
+            c_check, c_num = st.columns([3, 1])
             with c_check: presente = st.checkbox(item, value=False, key=f"h_{i}")
             with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nh_{i}", disabled=not presente, label_visibility="collapsed")
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
@@ -1437,7 +1399,7 @@ elif st.session_state.current_page == 'entrega_turno':
     for i, (item, cant_esperada) in enumerate(items_mat):
         col = col_m1 if i < (len(items_mat) // 2 + len(items_mat) % 2) else col_m2
         with col:
-            c_check, c_num = st.columns([4, 1])
+            c_check, c_num = st.columns([3, 1])
             with c_check: presente = st.checkbox(item, value=False, key=f"m_{i}")
             with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nm_{i}", disabled=not presente, label_visibility="collapsed")
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
@@ -1448,43 +1410,8 @@ elif st.session_state.current_page == 'entrega_turno':
     pendientes_et = st.text_area("Tareas pendientes o a realizar", height=80)
     obs_generales_et = st.text_area("Observaciones Generales", height=80)
 
-    st.markdown("---"); st.header("6. Evidencia Fotográfica (ROVs)")
-    st.info("Debe adjuntar las fotografías de los puertos vitales para ambos equipos.")
-    
-    diccionario_fotos = {}
-    
-    with st.expander("📸 Fotografías ROV 1 (Obligatorias)", expanded=True):
-        c_r1_1, c_r1_2 = st.columns(2)
-        with c_r1_1:
-            r1_p_carga = st.file_uploader("Puerto de Carga (ROV 1)", type=['png','jpg','jpeg'], key="r1_1")
-            r1_p_umb = st.file_uploader("Puerto Umbilical (ROV 1)", type=['png','jpg','jpeg'], key="r1_2")
-            r1_general = st.file_uploader("Foto General (ROV 1)", type=['png','jpg','jpeg'], key="r1_3")
-        with c_r1_2:
-            r1_p_sens = st.file_uploader("Puerto Sensor (ROV 1)", type=['png','jpg','jpeg'], key="r1_4")
-            r1_p_grab = st.file_uploader("Puerto Grabber (ROV 1)", type=['png','jpg','jpeg'], key="r1_5")
-    
-    with st.expander("📸 Fotografías ROV 2 (Obligatorias)", expanded=True):
-        c_r2_1, c_r2_2 = st.columns(2)
-        with c_r2_1:
-            r2_p_carga = st.file_uploader("Puerto de Carga (ROV 2)", type=['png','jpg','jpeg'], key="r2_1")
-            r2_p_umb = st.file_uploader("Puerto Umbilical (ROV 2)", type=['png','jpg','jpeg'], key="r2_2")
-            r2_general = st.file_uploader("Foto General (ROV 2)", type=['png','jpg','jpeg'], key="r2_3")
-        with c_r2_2:
-            r2_p_sens = st.file_uploader("Puerto Sensor (ROV 2)", type=['png','jpg','jpeg'], key="r2_4")
-            r2_p_grab = st.file_uploader("Puerto Grabber (ROV 2)", type=['png','jpg','jpeg'], key="r2_5")
-    
-    if r1_p_carga: diccionario_fotos["ROV 1 - Puerto de Carga"] = r1_p_carga
-    if r1_p_umb: diccionario_fotos["ROV 1 - Puerto Umbilical"] = r1_p_umb
-    if r1_p_sens: diccionario_fotos["ROV 1 - Puerto Sensor"] = r1_p_sens
-    if r1_p_grab: diccionario_fotos["ROV 1 - Puerto Grabber"] = r1_p_grab
-    if r1_general: diccionario_fotos["ROV 1 - Foto General"] = r1_general
-    if r2_p_carga: diccionario_fotos["ROV 2 - Puerto de Carga"] = r2_p_carga
-    if r2_p_umb: diccionario_fotos["ROV 2 - Puerto Umbilical"] = r2_p_umb
-    if r2_p_sens: diccionario_fotos["ROV 2 - Puerto Sensor"] = r2_p_sens
-    if r2_p_grab: diccionario_fotos["ROV 2 - Puerto Grabber"] = r2_p_grab
-    if r2_general: diccionario_fotos["ROV 2 - Foto General"] = r2_general
-    
-    st.markdown("---")
+    st.markdown("---"); st.header("6. Evidencia Fotográfica y Firmas")
+    imagenes_cargadas = st.file_uploader("Cargar imágenes de equipos/terreno (Opcional)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
     st.write("✍️ Firma Piloto ROV Saliente"); canvas_piloto = st_canvas(fill_color="rgba(255, 255, 255, 0)", stroke_width=2, stroke_color="#000", background_color="#FFF", height=120, width=300, drawing_mode="freedraw", key="canvas_et")
     correo_destino_et = st.text_input("Correo electrónico del destinatario", value="reportesrovincinel@gmail.com")
 
@@ -1502,14 +1429,7 @@ elif st.session_state.current_page == 'entrega_turno':
 
             datos_pdf = {
                 "1. Información General": {"Piloto_Entrante": piloto_entrante, "Piloto_Saliente": piloto_saliente, "Fecha": str(fecha_et), "Centro": centro_et, "Área": area_et},
-                "2. Estado de los Equipos (ROV)": {
-                    "ROV_En_Uso": f"{rov_activo['nombre']} (Serie: {rov_activo['serie_rov']})", 
-                    "ROV_Stand_by": f"{rov_standby['nombre']} (Serie: {rov_standby['serie_rov']})", 
-                    "Estado_General_ROV": estado_equipo, 
-                    "Estado_Controlador": estado_controlador, 
-                    "Cable_Umbilical": estado_umbilical, 
-                    "Observaciones_Equipos": obs_equipos
-                },
+                "2. Estado del Equipo": {"Modelo_ROV": equipo_rov, "Estado_ROV": estado_equipo, "Estado_Controlador": estado_controlador, "Cable_Umbilical": estado_umbilical, "Observaciones_Equipos": obs_equipos},
                 "3. Terreno": {"Equipamiento_Presente": txt_equipamiento, "Estado_del_Equipamiento": estado_equipamiento, "Observaciones_Equipamiento": obs_equipamiento},
                 "4. Herramientas": {"Herramientas_Presentes": herr_presentes if herr_presentes else ["Ninguna"], "Herramientas_Faltantes": herr_faltantes if herr_faltantes else ["Ninguna"]},
                 "5. Materiales de Mantención": {"Materiales_Presentes": mat_presentes if mat_presentes else ["Ninguno"], "Materiales_Faltantes": mat_faltantes if mat_faltantes else ["Ninguno"]},
@@ -1532,7 +1452,7 @@ elif st.session_state.current_page == 'entrega_turno':
             
             try:
                 logo_tridentech = obtener_ruta_logo()
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, diccionario_fotos=diccionario_fotos, folio=folio_et, correlativo=correlativo_et)
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas, folio=folio_et, correlativo=correlativo_et)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
