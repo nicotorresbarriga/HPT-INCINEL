@@ -28,6 +28,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ----------------- NUEVO ESTILO DE BOTONES 3D AZUL MARINO -----------------
 st.markdown(
     """
     <style>
@@ -89,9 +90,10 @@ st.markdown(
         opacity: 1;
     }
     
-    /* Hacer los recuadros de cantidad más pequeños en PC y Teléfono */
+    /* Hacer los recuadros de cantidad compactos, pero sin ocultar los botones de restar o sumar */
     div[data-testid="stNumberInput"] {
-        max-width: 110px !important;
+        max-width: 140px !important;
+        min-width: 120px !important;
     }
     
     /* Estilo profesional para el Panel de Control (Contenedores con borde) */
@@ -192,6 +194,7 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
+    """Busca el archivo de logo de TechTrident de forma absoluta y segura."""
     directorio_actual = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     posibles = [
         "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "Logo_techtrident.png",
@@ -210,6 +213,7 @@ def obtener_ruta_logo():
     return None
 
 def optimizar_imagen_ram(file_bytes_or_path, max_dim=800):
+    """Comprime imágenes pesadas en memoria RAM para evitar que el servidor colapse (OOM)."""
     try:
         if isinstance(file_bytes_or_path, bytes):
             img = Image.open(io.BytesIO(file_bytes_or_path))
@@ -464,6 +468,7 @@ elif st.session_state.current_page == 'main_menu':
     if es_lunes and not st.session_state.get('monday_alert_dismissed', False):
         st.warning("📅 **Rotación Semanal de Equipos ROV (Día Lunes)**")
         rov_actual_id = st.session_state.rov_activo
+        # Buscar el siguiente ROV (Asumimos 2 por simplicidad para la alerta)
         rov_standby_id = 2 if rov_actual_id == 1 else 1
         
         st.write(f"Es hora de cambiar al equipo {rov_standby_id}. ¿Deseas realizar el cambio ahora?")
@@ -542,7 +547,7 @@ elif st.session_state.current_page == 'main_menu':
                 st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
                 
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
-            tab_pilotos, tab_centros, tab_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros", "🤖 Equipos ROV"])
+            tab_pilotos, tab_centros, tab_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo", "🤖 Equipos ROV"])
             
             with tab_pilotos:
                 st.write("**Añadir o Actualizar Piloto**")
@@ -1217,7 +1222,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
 
             pdf_rd.ln(8)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -1364,12 +1369,33 @@ elif st.session_state.current_page == 'entrega_turno':
     with c4: opciones_centros_et = list(st.session_state.db_centros_areas.keys()); centro_et = st.selectbox("Centro", opciones_centros_et)
     with c5: area_et = st.session_state.db_centros_areas.get(centro_et, "Desconocida"); st.text_input("Área Asignada", value=area_et, disabled=True)
 
-    st.markdown("---"); st.header("2. Equipos en Terreno (ROV)")
-    c6, c7, c8, c9 = st.columns(4)
-    with c6: equipo_rov = st.selectbox("Modelo de Equipo", ["DTG3", "MC Petrohue", "Chasing Promax", "Chasing Promax 2", "Fifish vs xpert"])
-    with c7: estado_equipo = st.selectbox("Estado General del ROV", ["Bueno", "Regular", "Requiere cambio"])
-    with c8: estado_controlador = st.selectbox("Estado del Controlador", ["Bueno", "Regular", "Requiere cambio"])
-    with c9: estado_umbilical = st.selectbox("Estado del Cable Umbilical", ["Bueno", "Regular", "Requiere cambio"])
+    st.markdown("---"); st.header("2. Gestión de Equipos en Terreno (ROV)")
+    
+    opciones_rov = list(st.session_state.db_rovs.keys())
+    idx_activo = opciones_rov.index(st.session_state.rov_activo) if st.session_state.rov_activo in opciones_rov else 0
+    
+    nuevo_activo = st.selectbox("Seleccionar Equipo en Uso Actual", opciones_rov, format_func=lambda x: st.session_state.db_rovs[x]["nombre"], index=idx_activo)
+    if nuevo_activo != st.session_state.rov_activo:
+        st.session_state.rov_activo = nuevo_activo
+        st.rerun()
+        
+    rov_act = st.session_state.db_rovs[st.session_state.rov_activo]
+    rov_sby_id = [r for r in opciones_rov if r != st.session_state.rov_activo]
+    rov_sby = st.session_state.db_rovs[rov_sby_id[0]] if rov_sby_id else None
+
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        st.success(f"🟢 **Equipo en USO actual:**\n\n**{rov_act['nombre']}** N° Serie: {rov_act['serie_rov']}\n\nControlador N° Serie: {rov_act['serie_ctrl']}\n\nÚltima mantención: {rov_act['mantencion']}")
+    with col_r2:
+        if rov_sby:
+            st.warning(f"🟡 **Equipo Stand-by:**\n\n**{rov_sby['nombre']}** N° Serie: {rov_sby['serie_rov']}\n\nControlador N° Serie: {rov_sby['serie_ctrl']}\n\nÚltima mantención: {rov_sby['mantencion']}")
+        else:
+            st.info("No hay equipo en Stand-by registrado.")
+
+    c6, c7, c8 = st.columns(3)
+    with c6: estado_equipo = st.selectbox("Estado General del ROV en Uso", ["Bueno", "Regular", "Requiere cambio"])
+    with c7: estado_controlador = st.selectbox("Estado del Controlador en Uso", ["Bueno", "Regular", "Requiere cambio"])
+    with c8: estado_umbilical = st.selectbox("Estado del Cable Umbilical", ["Bueno", "Regular", "Requiere cambio"])
     obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas...")
 
     st.markdown("---"); st.header("3. Equipamiento de Terreno"); st.write("Seleccione los elementos presentes en terreno:")
@@ -1382,8 +1408,43 @@ elif st.session_state.current_page == 'entrega_turno':
     obs_equipamiento = st.text_area("Observaciones del Equipamiento", placeholder="Detalle daños...")
 
     st.markdown("---"); st.header("4. Inventario de Terreno")
-    herramientas_base = {"Cuchillo de maniobra con funda (Bahco)": 1, "Cuchillo de maniobra sin funda (Bahco)": 1, "Araña de recuperación de acero inoxidable": 1, "Juego de llaves Allen": 1, "Pelacables": 1, "Alicate de corte diagonal": 1, "Alicate de punta fina (mangos rojo/azul)": 1, "Alicate para anillos de retención (circlips)": 1, "Alicate universal": 1, "Alicate de punta fina pequeño": 1, "Destornilladores": 6}
-    materiales_base = {"Frasco de vaselina": 1, "Tubos de grasa dieléctrica (Loctite)": 3, "Paquete de hisopos": 1, "Tapones o conectores cilíndricos negros": 3, "Adhesivo industrial B-7000": 1, "Lata de lubricante penetrante (Afloja Todo)": 1, "WD-40": 1, "Limpia contacto": 1, "Tapones para puerto de carga": 2, "Tapón o cubierta cuadrada pequeña": 1, "Protectores de sensor": 3, "Rollo de cinta de empalme (Splicing tape)": 1, "Cartucho de cuchillas de repuesto": 1, "Repuestos de brazo manipulador grabber": 4}
+    herramientas_base = {
+        "Cuchillo de maniobra con funda (Bahco)": 1, 
+        "Cuchillo de maniobra sin funda (Bahco)": 1, 
+        "Araña de recuperación de acero inoxidable": 1, 
+        "Juego de llaves Allen": 1, 
+        "Pelacables": 1, 
+        "Alicate de corte diagonal": 1, 
+        "Alicate de punta fina (mangos rojo/azul)": 1, 
+        "Alicate para anillos de retención (circlips)": 1, 
+        "Alicate universal": 1, 
+        "Alicate de punta fina pequeño": 1, 
+        "Destornilladores": 6,
+        "Alicate de presión (caimán)": 1,
+        "Imán de recuperación (con cáncamo)": 1,
+        "Sierra de cuerda": 1
+    }
+    materiales_base = {
+        "Frasco de vaselina": 1, 
+        "Tubos de grasa dieléctrica (Loctite)": 3, 
+        "Paquete de hisopos": 1, 
+        "Tapones o conectores cilíndricos negros": 3, 
+        "Adhesivo industrial B-7000": 1, 
+        "Lata de lubricante penetrante (Afloja Todo)": 1, 
+        "WD-40": 1, 
+        "Limpia contacto": 1, 
+        "Tapones para puerto de carga": 2, 
+        "Tapón o cubierta cuadrada pequeña": 1, 
+        "Protectores de sensor": 3, 
+        "Rollo de cinta de empalme (Splicing tape)": 1, 
+        "Cartucho de cuchillas de repuesto": 1, 
+        "Repuestos de brazo manipulador grabber": 4,
+        "Cajas con cotonitos": 1,
+        "Cinta aislante eléctrica": 1,
+        "Tubo de pegamento instantáneo (super glue)": 1,
+        "Caja de hojas de repuesto (bisturí Bauker)": 1,
+        "Piezas de repuesto grabber (negras)": 4
+    }
 
     resultados_inventario = {}; st.subheader("Herramientas")
     col_h1, col_h2 = st.columns(2); items_herr = list(herramientas_base.items())
@@ -1411,7 +1472,34 @@ elif st.session_state.current_page == 'entrega_turno':
     obs_generales_et = st.text_area("Observaciones Generales", height=80)
 
     st.markdown("---"); st.header("6. Evidencia Fotográfica y Firmas")
-    imagenes_cargadas = st.file_uploader("Cargar imágenes de equipos/terreno (Opcional)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    
+    st.write("**Fotografías Obligatorias de Equipos ROV**")
+    diccionario_fotos_final = {}
+    
+    tabs_fotos = st.tabs([f"Fotos {st.session_state.db_rovs[r]['nombre']}" for r in opciones_rov])
+    
+    for i, r_id in enumerate(opciones_rov):
+        r_nombre = st.session_state.db_rovs[r_id]['nombre']
+        with tabs_fotos[i]:
+            c_f1, c_f2, c_f3 = st.columns(3)
+            with c_f1: 
+                f1 = st.file_uploader(f"Puerto de Carga ({r_nombre})", type=['png','jpg','jpeg'], key=f"f1_{r_id}")
+                if f1: diccionario_fotos_final[f"Puerto de Carga - {r_nombre}"] = f1
+            with c_f2: 
+                f2 = st.file_uploader(f"Puerto de Umbilical ({r_nombre})", type=['png','jpg','jpeg'], key=f"f2_{r_id}")
+                if f2: diccionario_fotos_final[f"Puerto de Umbilical - {r_nombre}"] = f2
+            with c_f3: 
+                f3 = st.file_uploader(f"Puerto de Sensor ({r_nombre})", type=['png','jpg','jpeg'], key=f"f3_{r_id}")
+                if f3: diccionario_fotos_final[f"Puerto de Sensor - {r_nombre}"] = f3
+            
+            c_f4, c_f5 = st.columns(2)
+            with c_f4: 
+                f4 = st.file_uploader(f"Puerto de Grabber ({r_nombre})", type=['png','jpg','jpeg'], key=f"f4_{r_id}")
+                if f4: diccionario_fotos_final[f"Puerto de Grabber - {r_nombre}"] = f4
+            with c_f5: 
+                f5 = st.file_uploader(f"Foto General ({r_nombre})", type=['png','jpg','jpeg'], key=f"f5_{r_id}")
+                if f5: diccionario_fotos_final[f"Foto General - {r_nombre}"] = f5
+
     st.write("✍️ Firma Piloto ROV Saliente"); canvas_piloto = st_canvas(fill_color="rgba(255, 255, 255, 0)", stroke_width=2, stroke_color="#000", background_color="#FFF", height=120, width=300, drawing_mode="freedraw", key="canvas_et")
     correo_destino_et = st.text_input("Correo electrónico del destinatario", value="reportesrovincinel@gmail.com")
 
@@ -1429,7 +1517,7 @@ elif st.session_state.current_page == 'entrega_turno':
 
             datos_pdf = {
                 "1. Información General": {"Piloto_Entrante": piloto_entrante, "Piloto_Saliente": piloto_saliente, "Fecha": str(fecha_et), "Centro": centro_et, "Área": area_et},
-                "2. Estado del Equipo": {"Modelo_ROV": equipo_rov, "Estado_ROV": estado_equipo, "Estado_Controlador": estado_controlador, "Cable_Umbilical": estado_umbilical, "Observaciones_Equipos": obs_equipos},
+                "2. Estado de los Equipos (ROV)": {"ROV_En_Uso": rov_act['nombre'], "ROV_Stand_by": rov_sby['nombre'] if rov_sby else "N/A", "Estado_General_ROV": estado_equipo, "Estado_Controlador": estado_controlador, "Cable_Umbilical": estado_umbilical, "Observaciones_Equipos": obs_equipos},
                 "3. Terreno": {"Equipamiento_Presente": txt_equipamiento, "Estado_del_Equipamiento": estado_equipamiento, "Observaciones_Equipamiento": obs_equipamiento},
                 "4. Herramientas": {"Herramientas_Presentes": herr_presentes if herr_presentes else ["Ninguna"], "Herramientas_Faltantes": herr_faltantes if herr_faltantes else ["Ninguna"]},
                 "5. Materiales de Mantención": {"Materiales_Presentes": mat_presentes if mat_presentes else ["Ninguno"], "Materiales_Faltantes": mat_faltantes if mat_faltantes else ["Ninguno"]},
@@ -1452,7 +1540,15 @@ elif st.session_state.current_page == 'entrega_turno':
             
             try:
                 logo_tridentech = obtener_ruta_logo()
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas, folio=folio_et, correlativo=correlativo_et)
+                archivo_pdf_et = generar_pdf_entrega(
+                    datos_pdf, 
+                    logo_tridentech, 
+                    nombre_base_et, 
+                    firma_path=firma_path_et, 
+                    diccionario_fotos=diccionario_fotos_final, 
+                    folio=folio_et, 
+                    correlativo=correlativo_et
+                )
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
