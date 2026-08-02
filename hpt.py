@@ -18,7 +18,7 @@ import uuid
 import urllib.request
 import zipfile
 import io
-import gc # Añadido para liberar memoria RAM
+import gc 
 from supabase import create_client, Client
 
 st.set_page_config(
@@ -28,7 +28,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ----------------- NUEVO ESTILO DE BOTONES 3D AZUL MARINO -----------------
 st.markdown(
     """
     <style>
@@ -127,6 +126,15 @@ if 'db_centros_areas' not in st.session_state:
 if 'db_centros_correos' not in st.session_state: 
     st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@techtrident.cl"}
 
+# NUEVA BASE DE DATOS DE ROVS EN MEMORIA
+if 'db_rovs' not in st.session_state:
+    st.session_state.db_rovs = {
+        1: {"nombre": "ROV 1", "serie_rov": "12992601127", "serie_ctrl": "12992601127", "mantencion": "02/08/26"},
+        2: {"nombre": "ROV 2", "serie_rov": "12992601128", "serie_ctrl": "12992601128", "mantencion": "02/08/26"}
+    }
+if 'rov_activo' not in st.session_state:
+    st.session_state.rov_activo = 1
+
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
 
@@ -170,7 +178,6 @@ def set_page(page_name): st.session_state.current_page = page_name
 def set_step(step_number): st.session_state.hpt_step = step_number
 
 def obtener_ruta_logo():
-    """Busca el archivo de logo de TechTrident de forma absoluta y segura."""
     directorio_actual = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     posibles = [
         "logo_techtrident.png", "logo_techtrident.PNG", "logo_techtrident.jpg", "Logo_techtrident.png",
@@ -189,7 +196,6 @@ def obtener_ruta_logo():
     return None
 
 def optimizar_imagen_ram(file_bytes_or_path, max_dim=800):
-    """Comprime imágenes pesadas en memoria RAM para evitar que el servidor colapse (OOM)."""
     try:
         if isinstance(file_bytes_or_path, bytes):
             img = Image.open(io.BytesIO(file_bytes_or_path))
@@ -199,21 +205,17 @@ def optimizar_imagen_ram(file_bytes_or_path, max_dim=800):
         if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
             img = img.convert('RGB')
             
-        # Achicamos la foto si es inmensa (ej: 4000x3000 -> 800x600)
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
         
         output_buffer = io.BytesIO()
-        # Guardamos comprimido en calidad 75% (No se nota en un PDF y ahorra muchísima memoria)
         img.save(output_buffer, format='JPEG', quality=75, optimize=True)
         output_buffer.seek(0)
         
-        # Limpiar la imagen original de la memoria RAM pesada
         img.close()
         gc.collect() 
         
         return output_buffer.getvalue()
     except Exception as e:
-        # Si algo falla, retorna lo original para no romper el flujo
         return file_bytes_or_path if isinstance(file_bytes_or_path, bytes) else open(file_bytes_or_path, "rb").read()
 
 def procesar_firma(canvas_obj, filename):
@@ -226,8 +228,8 @@ def procesar_firma(canvas_obj, filename):
         return True
     return False
 
-# ---------------- NUEVO MOTOR PDF DE ENTREGA DE TURNO (ESTANDARIZADO) ----------------
-def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, imagenes_subidas=None, folio="", correlativo=""):
+# ---------------- MOTOR PDF ACTUALIZADO PARA FOTOS ESPECÍFICAS DE ROVS ----------------
+def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, diccionario_fotos=None, folio="", correlativo=""):
     pdf = FPDF()
     pdf.set_margins(10, 10, 10)
     pdf.set_auto_page_break(auto=True, margin=20) 
@@ -307,11 +309,12 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
     pdf.ln(4)
 
     # 2. EQUIPOS
-    d2 = datos.get("2. Estado del Equipo", {})
+    d2 = datos.get("2. Estado de los Equipos (ROV)", {})
     if pdf.get_y() > 240: pdf.add_page()
     print_section_header("2. ESTADO DE LOS EQUIPOS (ROV)")
-    print_row_2("Modelo ROV:", d2.get("Modelo_ROV"), "Estado ROV:", d2.get("Estado_ROV"))
-    print_row_2("Controlador:", d2.get("Estado_Controlador"), "Cable Umbilical:", d2.get("Cable_Umbilical"))
+    pdf.set_font("Arial", "B", 9); pdf.cell(35, h_cell, "ROV En Uso:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, h_cell, str(d2.get("ROV_En_Uso")), border=1, ln=True)
+    pdf.set_font("Arial", "B", 9); pdf.cell(35, h_cell, "ROV Stand-by:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(155, h_cell, str(d2.get("ROV_Stand_by")), border=1, ln=True)
+    print_row_2("Estado ROV (Uso):", d2.get("Estado_General_ROV"), "Cable Umbilical:", d2.get("Cable_Umbilical"))
     print_multiline("Observaciones de Equipos", d2.get("Observaciones_Equipos"))
     pdf.ln(4)
 
@@ -356,17 +359,18 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
         pdf.image(firma_path, x=85, y=pdf.get_y()-22, w=40, h=18)
     pdf.set_font("Arial", "B", 9); pdf.cell(190, 8, f"Firma Piloto ROV Saliente: {piloto_saliente}", border=1, align="C", ln=True)
 
-    if imagenes_subidas:
+    # EVIDENCIA FOTOGRAFICA ESPECÍFICA (MODIFICADO)
+    if diccionario_fotos:
         pdf.add_page()
         pdf.set_font("Helvetica", 'B', 11)
         pdf.set_fill_color(15, 55, 105); pdf.set_text_color(255, 255, 255)
-        pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA", border=0, ln=True, fill=True); pdf.ln(5)
+        pdf.cell(190, 8, "  EVIDENCIA FOTOGRAFICA ROVs", border=0, ln=True, fill=True); pdf.ln(5)
         pdf.set_text_color(0, 0, 0)
+        
         col_img = 0; row_y = pdf.get_y(); max_h_row = 0
-        for img_file in imagenes_subidas:
+        for titulo, img_file in diccionario_fotos.items():
             temp_path = f"temp_{uuid.uuid4().hex[:6]}.jpg"
             
-            # OPTIMIZADOR DE RAM PARA ENTREGAS DE TURNO
             bytes_optimizados = optimizar_imagen_ram(img_file.getvalue())
             
             with open(temp_path, "wb") as f: 
@@ -374,14 +378,25 @@ def generar_pdf_entrega(datos, logo_filename, nombre_archivo, firma_path=None, i
                 
             with Image.open(temp_path) as pil_img:
                 w_px, h_px = pil_img.size; aspect = h_px / w_px
-                if aspect > (80 / 85): h_mm = 80; w_mm = 80 / aspect
+                if aspect > (80 / 85): h_mm = 75; w_mm = 75 / aspect
                 else: w_mm = 85; h_mm = 85 * aspect
-            if col_img == 2: col_img = 0; row_y += max_h_row + 10; max_h_row = 0
-            if row_y + 85 > 280: pdf.add_page(); row_y = pdf.get_y(); col_img = 0; max_h_row = 0
+                
+            if col_img == 2: col_img = 0; row_y += max_h_row + 15; max_h_row = 0
+            if row_y + 90 > 280: pdf.add_page(); row_y = pdf.get_y(); col_img = 0; max_h_row = 0
+            
             x_pos = 15 if col_img == 0 else 110
-            pdf.rect(x_pos - 1, row_y - 1, w_mm + 2, h_mm + 2)
-            pdf.image(temp_path, x=x_pos, y=row_y, w=w_mm, h=h_mm)
-            max_h_row = max(max_h_row, h_mm); col_img += 1
+            
+            # Imprimir Título
+            pdf.set_xy(x_pos, row_y)
+            pdf.set_font("Arial", 'B', 8)
+            pdf.cell(w_mm, 5, titulo, border=0, align='C', ln=2)
+            
+            # Imprimir Foto
+            y_foto = pdf.get_y()
+            pdf.rect(x_pos - 1, y_foto - 1, w_mm + 2, h_mm + 2)
+            pdf.image(temp_path, x=x_pos, y=y_foto, w=w_mm, h=h_mm)
+            
+            max_h_row = max(max_h_row, h_mm + 5); col_img += 1
             os.remove(temp_path) 
         pdf.set_y(row_y + max_h_row + 10)
 
@@ -430,8 +445,30 @@ elif st.session_state.current_page == 'main_menu':
     st.markdown("<h1 style='text-align: center;'>Sistema de Gestión Operativa</h1>", unsafe_allow_html=True)
     st.write(f"Operador en turno: **{st.session_state.current_user}**")
     
+    # ---------------- LOGICA ALERTA DE LUNES PARA ROVS ----------------
+    es_lunes = datetime.date.today().weekday() == 0
+    if es_lunes and not st.session_state.get('monday_alert_dismissed', False):
+        st.warning("📅 **Rotación Semanal de Equipos ROV (Día Lunes)**")
+        rov_actual_id = st.session_state.rov_activo
+        rov_standby_id = 2 if rov_actual_id == 1 else 1
+        
+        st.write(f"Es hora de cambiar al equipo {rov_standby_id}. ¿Deseas realizar el cambio ahora?")
+        col_y, col_n = st.columns(2)
+        with col_y:
+            if st.button("SÍ, Cambiar Equipo", type="primary", use_container_width=True):
+                st.session_state.rov_activo = rov_standby_id
+                st.session_state.monday_alert_dismissed = True
+                st.success(f"✅ Equipo cambiado exitosamente. Por favor, realizar mantención preventiva al ROV {rov_actual_id}.")
+                time.sleep(3)
+                st.rerun()
+        with col_n:
+            if st.button("NO, Mantener Equipo", use_container_width=True):
+                st.session_state.monday_alert_dismissed = True
+                st.rerun()
+                
+    st.markdown("---")
+    
     if st.session_state.current_user == 'admin':
-        st.markdown("---")
         st.subheader("📊 Panel de Control en Tiempo Real")
         
         try:
@@ -490,7 +527,7 @@ elif st.session_state.current_page == 'main_menu':
             st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
             
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
-            tab_pilotos, tab_centros = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo"])
+            tab_pilotos, tab_centros, tab_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros", "🤖 Equipos ROV"])
             
             with tab_pilotos:
                 st.write("**Añadir o Actualizar Piloto**")
@@ -549,6 +586,26 @@ elif st.session_state.current_page == 'main_menu':
                             st.rerun()
                 else:
                     st.info("No hay centros registrados para eliminar.")
+                    
+            with tab_rovs:
+                st.write("**Añadir Nuevo Equipo ROV (Externo)**")
+                with st.form("form_add_rov", clear_on_submit=True):
+                    r_c1, r_c2 = st.columns(2)
+                    with r_c1: 
+                        new_rov_name = st.text_input("Nombre / Identificador (Ej: ROV 3)")
+                        new_rov_serie = st.text_input("N° Serie ROV")
+                    with r_c2:
+                        new_ctrl_serie = st.text_input("N° Serie Controlador")
+                        new_mantencion = st.date_input("Fecha Última Mantención")
+                    if st.form_submit_button("Registrar Equipo ROV"):
+                        new_id = len(st.session_state.db_rovs) + 1
+                        st.session_state.db_rovs[new_id] = {
+                            "nombre": new_rov_name,
+                            "serie_rov": new_rov_serie,
+                            "serie_ctrl": new_ctrl_serie,
+                            "mantencion": str(new_mantencion)
+                        }
+                        st.success(f"Equipo {new_rov_name} registrado exitosamente.")
 
     st.divider()
     c1, c2 = st.columns(2)
@@ -1145,7 +1202,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Correo Centro:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, correo_asignado_rd[:35], border=1, ln=True)
 
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Area Asignada:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, area_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Cond. Puerto:", border=1); pdf.set_font("Arial", "", 9); pdf.cell(60, h_cell, condicion_puerto_rd, border=1, ln=True)
 
             pdf_rd.ln(8)
             pdf_rd.set_fill_color(15, 55, 105); pdf_rd.set_text_color(255, 255, 255)
@@ -1292,13 +1349,35 @@ elif st.session_state.current_page == 'entrega_turno':
     with c4: opciones_centros_et = list(st.session_state.db_centros_areas.keys()); centro_et = st.selectbox("Centro", opciones_centros_et)
     with c5: area_et = st.session_state.db_centros_areas.get(centro_et, "Desconocida"); st.text_input("Área Asignada", value=area_et, disabled=True)
 
-    st.markdown("---"); st.header("2. Equipos en Terreno (ROV)")
-    c6, c7, c8, c9 = st.columns(4)
-    with c6: equipo_rov = st.selectbox("Modelo de Equipo", ["DTG3", "MC Petrohue", "Chasing Promax", "Chasing Promax 2", "Fifish vs xpert"])
-    with c7: estado_equipo = st.selectbox("Estado General del ROV", ["Bueno", "Regular", "Requiere cambio"])
+    st.markdown("---"); st.header("2. Gestión de Equipos ROV")
+    
+    rov_act_id = st.session_state.get('rov_activo', 1)
+    rov_stb_id = 2 if rov_act_id == 1 else 1
+    
+    rov_activo = st.session_state.db_rovs[rov_act_id]
+    rov_standby = st.session_state.db_rovs[rov_stb_id]
+    
+    c_rov1, c_rov2 = st.columns(2)
+    with c_rov1:
+        st.success(f"🟢 **Equipo en USO actual:**")
+        st.write(f"**Nombre:** {rov_activo['nombre']}")
+        st.write(f"**N° Serie ROV:** {rov_activo['serie_rov']}")
+        st.write(f"**N° Serie Controlador:** {rov_activo['serie_ctrl']}")
+        st.write(f"**Última Mantención:** {rov_activo['mantencion']}")
+        
+    with c_rov2:
+        st.warning(f"🟡 **Equipo Stand-by:**")
+        st.write(f"**Nombre:** {rov_standby['nombre']}")
+        st.write(f"**N° Serie ROV:** {rov_standby['serie_rov']}")
+        st.write(f"**N° Serie Controlador:** {rov_standby['serie_ctrl']}")
+        st.write(f"**Última Mantención:** {rov_standby['mantencion']}")
+        
+    st.write(" ")
+    c6, c8, c9 = st.columns(3)
+    with c6: estado_equipo = st.selectbox("Estado General del ROV en Uso", ["Bueno", "Regular", "Requiere cambio"])
     with c8: estado_controlador = st.selectbox("Estado del Controlador", ["Bueno", "Regular", "Requiere cambio"])
     with c9: estado_umbilical = st.selectbox("Estado del Cable Umbilical", ["Bueno", "Regular", "Requiere cambio"])
-    obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas...")
+    obs_equipos = st.text_area("Observaciones de los Equipos", placeholder="Detalle fallas o anomalías detectadas...")
 
     st.markdown("---"); st.header("3. Equipamiento de Terreno"); st.write("Seleccione los elementos presentes en terreno:")
     c10, c11, c12, c13, c14 = st.columns(5)
@@ -1310,15 +1389,46 @@ elif st.session_state.current_page == 'entrega_turno':
     obs_equipamiento = st.text_area("Observaciones del Equipamiento", placeholder="Detalle daños...")
 
     st.markdown("---"); st.header("4. Inventario de Terreno")
-    herramientas_base = {"Cuchillo de maniobra con funda (Bahco)": 1, "Cuchillo de maniobra sin funda (Bahco)": 1, "Araña de recuperación de acero inoxidable": 1, "Juego de llaves Allen": 1, "Pelacables": 1, "Alicate de corte diagonal": 1, "Alicate de punta fina (mangos rojo/azul)": 1, "Alicate para anillos de retención (circlips)": 1, "Alicate universal": 1, "Alicate de punta fina pequeño": 1, "Destornilladores": 6}
-    materiales_base = {"Frasco de vaselina": 1, "Tubos de grasa dieléctrica (Loctite)": 3, "Paquete de hisopos": 1, "Tapones o conectores cilíndricos negros": 3, "Adhesivo industrial B-7000": 1, "Lata de lubricante penetrante (Afloja Todo)": 1, "WD-40": 1, "Limpia contacto": 1, "Tapones para puerto de carga": 2, "Tapón o cubierta cuadrada pequeña": 1, "Protectores de sensor": 3, "Rollo de cinta de empalme (Splicing tape)": 1, "Cartucho de cuchillas de repuesto": 1, "Repuestos de brazo manipulador grabber": 4}
+    herramientas_base = {
+        "Cuchillo de maniobra con funda (Bahco)": 1, 
+        "Cuchillo de maniobra sin funda (Bahco)": 1, 
+        "Araña de recuperación de acero inoxidable": 1, 
+        "Juego de llaves Allen": 1, 
+        "Pelacables": 1, 
+        "Alicate de corte diagonal": 1, 
+        "Alicate de punta fina / corte": 1, 
+        "Alicate para anillos de retención (circlips)": 1, 
+        "Alicate universal": 1, 
+        "Destornilladores": 6,
+        "Alicate de presión (caimán)": 1,
+        "Imán de recuperación (con cáncamo)": 1,
+        "Sierra de cuerda": 1
+    }
+    materiales_base = {
+        "Envase de vaselina": 1, 
+        "Tubo de grasa dieléctrica Loctite (cerrado)": 1, 
+        "Tubo de grasa/adhesivo Loctite (abierto/usado)": 1,
+        "Cajas con cotonitos": 1, 
+        "Tapones o conectores cilíndricos negros": 3, 
+        "Adhesivo industrial B-7000": 1, 
+        "Tubo de pegamento instantáneo (super glue)": 1,
+        "Afloja todo WD-40": 2, 
+        "Limpia contacto": 1, 
+        "Tapones para puerto de carga": 2, 
+        "Tapón o cubierta cuadrada pequeña": 1, 
+        "Protectores de sensor": 3, 
+        "Cinta aislante eléctrica": 1,
+        "Rollo de cinta de empalme (Splicing tape)": 1, 
+        "Caja de hojas de repuesto para cuchillo/bisturí Bauker": 1, 
+        "Piezas de repuesto grabber (negras con perforaciones)": 4
+    }
 
     resultados_inventario = {}; st.subheader("Herramientas")
     col_h1, col_h2 = st.columns(2); items_herr = list(herramientas_base.items())
     for i, (item, cant_esperada) in enumerate(items_herr):
         col = col_h1 if i < (len(items_herr) // 2 + len(items_herr) % 2) else col_h2
         with col:
-            c_check, c_num = st.columns([3, 1])
+            c_check, c_num = st.columns([4, 1])
             with c_check: presente = st.checkbox(item, value=False, key=f"h_{i}")
             with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nh_{i}", disabled=not presente, label_visibility="collapsed")
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
@@ -1327,7 +1437,7 @@ elif st.session_state.current_page == 'entrega_turno':
     for i, (item, cant_esperada) in enumerate(items_mat):
         col = col_m1 if i < (len(items_mat) // 2 + len(items_mat) % 2) else col_m2
         with col:
-            c_check, c_num = st.columns([3, 1])
+            c_check, c_num = st.columns([4, 1])
             with c_check: presente = st.checkbox(item, value=False, key=f"m_{i}")
             with c_num: cantidad = st.number_input("Cant.", min_value=0, max_value=50, value=cant_esperada if presente else 0, step=1, key=f"nm_{i}", disabled=not presente, label_visibility="collapsed")
             resultados_inventario[item] = {"presente": presente, "cantidad": cantidad}
@@ -1338,8 +1448,43 @@ elif st.session_state.current_page == 'entrega_turno':
     pendientes_et = st.text_area("Tareas pendientes o a realizar", height=80)
     obs_generales_et = st.text_area("Observaciones Generales", height=80)
 
-    st.markdown("---"); st.header("6. Evidencia Fotográfica y Firmas")
-    imagenes_cargadas = st.file_uploader("Cargar imágenes de equipos/terreno (Opcional)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+    st.markdown("---"); st.header("6. Evidencia Fotográfica (ROVs)")
+    st.info("Debe adjuntar las fotografías de los puertos vitales para ambos equipos.")
+    
+    diccionario_fotos = {}
+    
+    with st.expander("📸 Fotografías ROV 1 (Obligatorias)", expanded=True):
+        c_r1_1, c_r1_2 = st.columns(2)
+        with c_r1_1:
+            r1_p_carga = st.file_uploader("Puerto de Carga (ROV 1)", type=['png','jpg','jpeg'], key="r1_1")
+            r1_p_umb = st.file_uploader("Puerto Umbilical (ROV 1)", type=['png','jpg','jpeg'], key="r1_2")
+            r1_general = st.file_uploader("Foto General (ROV 1)", type=['png','jpg','jpeg'], key="r1_3")
+        with c_r1_2:
+            r1_p_sens = st.file_uploader("Puerto Sensor (ROV 1)", type=['png','jpg','jpeg'], key="r1_4")
+            r1_p_grab = st.file_uploader("Puerto Grabber (ROV 1)", type=['png','jpg','jpeg'], key="r1_5")
+    
+    with st.expander("📸 Fotografías ROV 2 (Obligatorias)", expanded=True):
+        c_r2_1, c_r2_2 = st.columns(2)
+        with c_r2_1:
+            r2_p_carga = st.file_uploader("Puerto de Carga (ROV 2)", type=['png','jpg','jpeg'], key="r2_1")
+            r2_p_umb = st.file_uploader("Puerto Umbilical (ROV 2)", type=['png','jpg','jpeg'], key="r2_2")
+            r2_general = st.file_uploader("Foto General (ROV 2)", type=['png','jpg','jpeg'], key="r2_3")
+        with c_r2_2:
+            r2_p_sens = st.file_uploader("Puerto Sensor (ROV 2)", type=['png','jpg','jpeg'], key="r2_4")
+            r2_p_grab = st.file_uploader("Puerto Grabber (ROV 2)", type=['png','jpg','jpeg'], key="r2_5")
+    
+    if r1_p_carga: diccionario_fotos["ROV 1 - Puerto de Carga"] = r1_p_carga
+    if r1_p_umb: diccionario_fotos["ROV 1 - Puerto Umbilical"] = r1_p_umb
+    if r1_p_sens: diccionario_fotos["ROV 1 - Puerto Sensor"] = r1_p_sens
+    if r1_p_grab: diccionario_fotos["ROV 1 - Puerto Grabber"] = r1_p_grab
+    if r1_general: diccionario_fotos["ROV 1 - Foto General"] = r1_general
+    if r2_p_carga: diccionario_fotos["ROV 2 - Puerto de Carga"] = r2_p_carga
+    if r2_p_umb: diccionario_fotos["ROV 2 - Puerto Umbilical"] = r2_p_umb
+    if r2_p_sens: diccionario_fotos["ROV 2 - Puerto Sensor"] = r2_p_sens
+    if r2_p_grab: diccionario_fotos["ROV 2 - Puerto Grabber"] = r2_p_grab
+    if r2_general: diccionario_fotos["ROV 2 - Foto General"] = r2_general
+    
+    st.markdown("---")
     st.write("✍️ Firma Piloto ROV Saliente"); canvas_piloto = st_canvas(fill_color="rgba(255, 255, 255, 0)", stroke_width=2, stroke_color="#000", background_color="#FFF", height=120, width=300, drawing_mode="freedraw", key="canvas_et")
     correo_destino_et = st.text_input("Correo electrónico del destinatario", value="reportesrovincinel@gmail.com")
 
@@ -1357,7 +1502,14 @@ elif st.session_state.current_page == 'entrega_turno':
 
             datos_pdf = {
                 "1. Información General": {"Piloto_Entrante": piloto_entrante, "Piloto_Saliente": piloto_saliente, "Fecha": str(fecha_et), "Centro": centro_et, "Área": area_et},
-                "2. Estado del Equipo": {"Modelo_ROV": equipo_rov, "Estado_ROV": estado_equipo, "Estado_Controlador": estado_controlador, "Cable_Umbilical": estado_umbilical, "Observaciones_Equipos": obs_equipos},
+                "2. Estado de los Equipos (ROV)": {
+                    "ROV_En_Uso": f"{rov_activo['nombre']} (Serie: {rov_activo['serie_rov']})", 
+                    "ROV_Stand_by": f"{rov_standby['nombre']} (Serie: {rov_standby['serie_rov']})", 
+                    "Estado_General_ROV": estado_equipo, 
+                    "Estado_Controlador": estado_controlador, 
+                    "Cable_Umbilical": estado_umbilical, 
+                    "Observaciones_Equipos": obs_equipos
+                },
                 "3. Terreno": {"Equipamiento_Presente": txt_equipamiento, "Estado_del_Equipamiento": estado_equipamiento, "Observaciones_Equipamiento": obs_equipamiento},
                 "4. Herramientas": {"Herramientas_Presentes": herr_presentes if herr_presentes else ["Ninguna"], "Herramientas_Faltantes": herr_faltantes if herr_faltantes else ["Ninguna"]},
                 "5. Materiales de Mantención": {"Materiales_Presentes": mat_presentes if mat_presentes else ["Ninguno"], "Materiales_Faltantes": mat_faltantes if mat_faltantes else ["Ninguno"]},
@@ -1380,7 +1532,7 @@ elif st.session_state.current_page == 'entrega_turno':
             
             try:
                 logo_tridentech = obtener_ruta_logo()
-                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, imagenes_subidas=imagenes_cargadas, folio=folio_et, correlativo=correlativo_et)
+                archivo_pdf_et = generar_pdf_entrega(datos_pdf, logo_tridentech, nombre_base_et, firma_path=firma_path_et, diccionario_fotos=diccionario_fotos, folio=folio_et, correlativo=correlativo_et)
                 
                 barra_et.progress(50, text="☁️ Subiendo a la Nube...")
                 url_pdf_et_nube = ""
