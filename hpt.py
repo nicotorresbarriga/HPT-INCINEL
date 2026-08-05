@@ -142,14 +142,18 @@ if 'db_centros_areas' not in st.session_state:
 if 'db_centros_correos' not in st.session_state: 
     st.session_state.db_centros_correos = {"Centro Punta Vergara": "contacto@techtrident.cl"}
 
-# NUEVA BASE DE DATOS DE ROVS EN MEMORIA
+# BASE DE DATOS DE ROVS EN MEMORIA (ACTUALIZADO N SERIES)
 if 'db_rovs' not in st.session_state:
     st.session_state.db_rovs = {
-        1: {"nombre": "ROV 1", "serie_rov": "12992601127", "serie_ctrl": "12992601127", "mantencion": "02/08/26"},
-        2: {"nombre": "ROV 2", "serie_rov": "12992601128", "serie_ctrl": "12992601128", "mantencion": "02/08/26"}
+        1: {"nombre": "ROV 1", "serie_rov": "12992601117", "serie_ctrl": "12992601117", "mantencion": datetime.date(2026, 8, 2)},
+        2: {"nombre": "ROV 2", "serie_rov": "12992601127", "serie_ctrl": "12992601127", "mantencion": datetime.date(2026, 8, 2)}
     }
 if 'rov_activo' not in st.session_state:
     st.session_state.rov_activo = 1
+
+# HISTORIAL DE MANTENCIONES ROV
+if 'historial_mantenciones' not in st.session_state:
+    st.session_state.historial_mantenciones = []
 
 CORREOS_PREVENCION = ["No enviar (Modo Pruebas)", "No enviar (Modo Pruebas)"]
 CORREOS_OCULTOS = []
@@ -547,7 +551,7 @@ elif st.session_state.current_page == 'main_menu':
                 st.error("🚨 **ALERTA CRÍTICA:** Son pasadas las 20:00 Hrs y existen Reportes Diarios pendientes por envío.")
                 
         with st.expander("⚙️ Gestión de Plataforma (Configuración Admin)", expanded=False):
-            tab_pilotos, tab_centros, tab_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo", "🤖 Equipos ROV"])
+            tab_pilotos, tab_centros, tab_rovs, tab_historial_rovs = st.tabs(["👨‍✈️ Pilotos", "⚓ Centros de Cultivo", "🤖 Equipos ROV", "🛠️ Historial Mantenciones ROV"])
             
             with tab_pilotos:
                 st.write("**Añadir o Actualizar Piloto**")
@@ -623,9 +627,18 @@ elif st.session_state.current_page == 'main_menu':
                             "nombre": new_rov_name,
                             "serie_rov": new_rov_serie,
                             "serie_ctrl": new_ctrl_serie,
-                            "mantencion": str(new_mantencion)
+                            "mantencion": new_mantencion
                         }
                         st.success(f"Equipo {new_rov_name} registrado exitosamente.")
+
+            # NUEVO: TAB DE HISTORIAL DE MANTENCIONES
+            with tab_historial_rovs:
+                st.write("**Historial de Mantenciones Declaradas en Terreno**")
+                if st.session_state.historial_mantenciones:
+                    df_mantenciones = pd.DataFrame(st.session_state.historial_mantenciones)
+                    st.dataframe(df_mantenciones, use_container_width=True)
+                else:
+                    st.info("Aún no se han registrado actualizaciones de mantención desde el terreno.")
 
     st.divider()
     c1, c2 = st.columns(2)
@@ -1213,7 +1226,7 @@ elif st.session_state.current_page == 'reporte_diario':
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Rango Horario:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, f"{hora_inicio_rd} - {hora_termino_rd}", border=1, ln=True)
             
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Piloto ROV:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, piloto_rd, border=1)
-            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Nombre Ponton:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, ponton_rd, border=1, ln=True)
+            pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Nombre Ponton:", border=1); pdf.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, ponton_rd, border=1, ln=True)
             
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Empresa:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, empresa_rd, border=1)
             pdf_rd.set_font("Arial", "B", 9); pdf_rd.cell(35, h_cell, "Centro Cultivo:", border=1); pdf_rd.set_font("Arial", "", 9); pdf_rd.cell(60, h_cell, centro_rd, border=1, ln=True)
@@ -1383,12 +1396,38 @@ elif st.session_state.current_page == 'entrega_turno':
     rov_sby_id = [r for r in opciones_rov if r != st.session_state.rov_activo]
     rov_sby = st.session_state.db_rovs[rov_sby_id[0]] if rov_sby_id else None
 
+    # MÓDULO DE ACTUALIZACIÓN DE MANTENCIÓN POR PARTE DEL PILOTO
     col_r1, col_r2 = st.columns(2)
     with col_r1:
-        st.success(f"🟢 **Equipo en USO actual:**\n\n**{rov_act['nombre']}** N° Serie: {rov_act['serie_rov']}\n\nControlador N° Serie: {rov_act['serie_ctrl']}\n\nÚltima mantención: {rov_act['mantencion']}")
+        st.markdown(f"🟢 **Equipo en USO actual:**")
+        st.markdown(f"**{rov_act['nombre']}** N° Serie: {rov_act['serie_rov']} <br> Controlador N° Serie: {rov_act['serie_ctrl']}", unsafe_allow_html=True)
+        # El piloto puede modificar la fecha de mantención
+        nueva_fecha_act = st.date_input(f"Última mantención ({rov_act['nombre']})", value=rov_act['mantencion'], key="mant_act")
+        if nueva_fecha_act != rov_act['mantencion']:
+            st.session_state.db_rovs[st.session_state.rov_activo]['mantencion'] = nueva_fecha_act
+            # Guardar en el historial
+            st.session_state.historial_mantenciones.append({
+                "fecha_registro": datetime.date.today(),
+                "piloto": st.session_state.current_user,
+                "equipo": rov_act['nombre'],
+                "fecha_mantencion_declarada": nueva_fecha_act
+            })
+            st.success("✅ Fecha de mantención actualizada y guardada en el historial.")
+
     with col_r2:
         if rov_sby:
-            st.warning(f"🟡 **Equipo Stand-by:**\n\n**{rov_sby['nombre']}** N° Serie: {rov_sby['serie_rov']}\n\nControlador N° Serie: {rov_sby['serie_ctrl']}\n\nÚltima mantención: {rov_sby['mantencion']}")
+            st.markdown(f"🟡 **Equipo Stand-by:**")
+            st.markdown(f"**{rov_sby['nombre']}** N° Serie: {rov_sby['serie_rov']} <br> Controlador N° Serie: {rov_sby['serie_ctrl']}", unsafe_allow_html=True)
+            nueva_fecha_sby = st.date_input(f"Última mantención ({rov_sby['nombre']})", value=rov_sby['mantencion'], key="mant_sby")
+            if nueva_fecha_sby != rov_sby['mantencion']:
+                st.session_state.db_rovs[rov_sby_id[0]]['mantencion'] = nueva_fecha_sby
+                st.session_state.historial_mantenciones.append({
+                    "fecha_registro": datetime.date.today(),
+                    "piloto": st.session_state.current_user,
+                    "equipo": rov_sby['nombre'],
+                    "fecha_mantencion_declarada": nueva_fecha_sby
+                })
+                st.success("✅ Fecha de mantención actualizada y guardada en el historial.")
         else:
             st.info("No hay equipo en Stand-by registrado.")
 
